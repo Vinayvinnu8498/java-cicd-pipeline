@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+<<<<<<< HEAD
+	<name>MathUtilspython</name>
+=======
+	<name>MathUtilsProject</name>
+>>>>>>> 0de0e76e1f546a433681f710e75484d8558e5ba4
+	<comment></comment>
+	<projects>
+	</projects>
+	<buildSpec>
+		<buildCommand>
+<<<<<<< HEAD
+			<name>org.python.pydev.PyDevBuilder</name>
+=======
+			<name>org.eclipse.jdt.core.javabuilder</name>
+>>>>>>> 0de0e76e1f546a433681f710e75484d8558e5ba4
+			<arguments>
+			</arguments>
+		</buildCommand>
+	</buildSpec>
+	<natures>
+<<<<<<< HEAD
+		<nature>org.python.pydev.pythonNature</nature>
+=======
+		<nature>org.eclipse.jdt.core.javanature</nature>
+>>>>>>> 0de0e76e1f546a433681f710e75484d8558e5ba4
+	</natures>
+</projectDescription>
