@@ -8,12 +8,6 @@ pipeline {
 
     stages {
 
-        stage('Checkout') {
-            steps {
-                git 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
-            }
-        }
-
         stage('Build') {
             steps {
                 script {
