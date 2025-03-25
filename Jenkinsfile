@@ -6,13 +6,14 @@ pipeline {
     stages {
         stage('Build') {
             steps {
-                sh 'javac MathUtils.java MathUtilsApplication.java'
+                sh 'mkdir -p out'
+                sh 'javac -d out MathUtils.java MathUtilsApplication.java'
             }
         }
 
         stage('Run') {
             steps {
-                sh 'java myapp.MathUtilsApplication'
+                sh 'java -cp out myapp.MathUtilsApplication'
             }
         }
 
