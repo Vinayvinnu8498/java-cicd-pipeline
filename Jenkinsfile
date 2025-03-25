@@ -6,13 +6,13 @@ pipeline {
     stages {
         stage('Build') {
             steps {
-                sh 'javac MathUtils.java'
+                sh 'javac MathUtilsApplication.java'
             }
         }
 
         stage('Run') {
             steps {
-                sh 'java MathUtils'
+                sh 'java MathUtilsApplication'
             }
         }
 
