@@ -1,65 +1,45 @@
 pipeline {
     agent any
-
     environment {
-        SONARQUBE_SERVER = 'http://sonar:9000'
-        DOCKER_IMAGE = 'vinay8498/my-java-app:latest'
+        DOCKER_IMAGE = 'vinay8498/my-java-app:v10'
     }
-
     stages {
+        stage('Checkout') {
+            steps {
+                git 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
+            }
+        }
 
         stage('Build') {
             steps {
-                script {
-                    docker.image('openjdk:17-jdk').inside {
-                        sh 'mvn clean package'
-                    }
-                }
+                bat 'javac src\\MathUtils.java'
             }
         }
 
-        stage('Test') {
+        stage('Run') {
             steps {
-                script {
-                    docker.image('openjdk:11-jdk').inside {
-                        sh 'mvn test'
-                    }
-                }
-            }
-        }
-
-        stage('Static Code Analysis') {
-            steps {
-                script {
-                    docker.image('openjdk:8-jdk').inside {
-                        sh 'mvn sonar:sonar -Dsonar.host.url=${SONARQUBE_SERVER}'
-                    }
-                }
+                bat 'java -cp src MathUtils'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    sh 'docker build -t ${DOCKER_IMAGE} .'
-                }
+                bat 'docker build -t %DOCKER_IMAGE% .'
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
-                script {
-                    sh 'docker login -u vinay8498 -p Iphone16pro@8498'
-                    sh 'docker push ${DOCKER_IMAGE}'
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    bat 'docker login -u %DOCKER_USER% -p %DOCKER_PASS%'
+                    bat 'docker push %DOCKER_IMAGE%'
                 }
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                script {
-                    sh 'kubectl apply -f deployment.yaml'
-                }
+                bat 'kubectl apply -f deployment.yaml'
             }
         }
     }
