@@ -1,13 +1,10 @@
-package com.mathutils;
+package myapp;
 
 public class MathUtilsApplication {
     public static void main(String[] args) {
-        System.out.println("MathUtils application is running...");
-        
-        // Create an instance of MathUtils
         MathUtils mathUtils = new MathUtils();
 
-        // Use instance methods
+        System.out.println("MathUtils application is running...");
         System.out.println("5 + 3 = " + mathUtils.add(5, 3));
         System.out.println("10 - 4 = " + mathUtils.subtract(10, 4));
         System.out.println("6 * 7 = " + mathUtils.multiply(6, 7));

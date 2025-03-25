@@ -12,7 +12,7 @@ pipeline {
 
         stage('Run') {
             steps {
-                sh 'java MathUtilsApplication'
+                sh 'java myapp.MathUtilsApplication'
             }
         }
 
