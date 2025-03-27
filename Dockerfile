@@ -1,14 +1,9 @@
-# Use a Java base image
-FROM openjdk:17-jdk
+FROM jenkins/jenkins:lts
 
-# Set the working directory inside the container
-WORKDIR /app
+USER root
 
-# Copy the local directory contents into the container at /app
-COPY . /app
-
-# Compile the Java code
-RUN javac MathUtils.java MathUtilsApplication.java
-
-# Set the command to run your app
-CMD ["java", "-cp", "out", "myapp.MathUtilsApplication"]
+RUN apt-get update && \
+    apt-get install -y curl && \
+    curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.24.0/bin/linux/amd64/kubectl && \
+    chmod +x kubectl && \
+    mv kubectl /usr/local/bin/

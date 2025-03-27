@@ -2,15 +2,15 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB_CREDENTIALS = credentials('dockerhub-creds')
-        SONAR_TOKEN = credentials('sonarqube-token')
+        DOCKER_IMAGE = "vinay8498/java-math-utils"
+        SONAR_PROJECT_KEY = "java-math-utils"
     }
 
     stages {
+
         stage('Checkout') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
+                git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
             }
         }
 
@@ -22,29 +22,45 @@ pipeline {
                 }
             }
             steps {
-                sh 'mvn clean package -DskipTests'
+                dir('math-utils') {
+                    sh 'mvn clean package -DskipTests'
+                }
             }
         }
 
         stage('Test') {
+            agent {
+                docker {
+                    image 'maven:3.9-eclipse-temurin-17'
+                    args '-v /root/.m2:/root/.m2'
+                }
+            }
             steps {
-                sh 'mvn test'
+                dir('math-utils') {
+                    sh 'mvn test'
+                }
             }
         }
 
         stage('Static Code Analysis') {
             steps {
-                sh 'mvn sonar:sonar -Dsonar.projectKey=java-cicd-pipeline -Dsonar.host.url=http://sonar:9000 -Dsonar.login=$SONAR_TOKEN'
+                withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
+                    dir('math-utils') {
+                        sh 'sonar-scanner -Dsonar.projectKey=$SONAR_PROJECT_KEY -Dsonar.sources=. -Dsonar.host.url=http://sonarqube:9000 -Dsonar.login=$SONAR_TOKEN'
+                    }
+                }
             }
         }
 
         stage('Docker Build & Push') {
             steps {
-                sh '''
-                    docker build -t vinay8498/java-cicd-pipeline:latest .
-                    echo $DOCKER_HUB_CREDENTIALS_PSW | docker login -u $DOCKER_HUB_CREDENTIALS_USR --password-stdin
-                    docker push vinay8498/java-cicd-pipeline:latest
-                '''
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    script {
+                        sh 'docker build -t $DOCKER_IMAGE ./math-utils'
+                        sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                        sh 'docker push $DOCKER_IMAGE'
+                    }
+                }
             }
         }
 
