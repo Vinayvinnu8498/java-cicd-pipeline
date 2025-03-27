@@ -2,59 +2,56 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_USER = 'vinay8498'
-        DOCKER_TOKEN = credentials('docker-token')
-        SONAR_TOKEN = credentials('sonar-token')
+        IMAGE_NAME = 'vinay8498/java-cicd-pipeline'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
+                git branch: 'main', changelog: false, poll: false, url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
             }
         }
 
         stage('Build') {
-            steps {
-                script {
-                    docker.image('maven:3.8.6-eclipse-temurin-17').inside {
-                        sh 'mvn clean package -DskipTests'
-                    }
+            agent {
+                docker {
+                    image 'maven:3.8.7-openjdk-17'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock'
                 }
+            }
+            steps {
+                sh 'mvn clean package -DskipTests'
             }
         }
 
         stage('Test') {
             steps {
-                script {
-                    docker.image('openjdk:11-jdk').inside {
-                        sh 'java -version'
-                        // Replace with your test command if needed
-                    }
-                }
+                sh 'echo "Running tests..."'
+                sh 'mvn test'
             }
         }
 
         stage('Static Code Analysis') {
             steps {
-                script {
-                    docker.image('openjdk:8-jdk').inside {
-                        withSonarQubeEnv('MySonarQubeServer') {
-                            sh 'mvn sonar:sonar -Dsonar.login=$SONAR_TOKEN'
-                        }
-                    }
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    sh '''
+                        mvn sonar:sonar \
+                        -Dsonar.projectKey=java-cicd-pipeline \
+                        -Dsonar.host.url=http://sonar:9000 \
+                        -Dsonar.login=$SONAR_TOKEN
+                    '''
                 }
             }
         }
 
         stage('Docker Build & Push') {
             steps {
-                script {
-                    docker.build('java-app')
-                    docker.withRegistry('', 'docker-hub-credentials') {
-                        docker.image('java-app').push('latest')
-                    }
+                withCredentials([string(credentialsId: 'docker-token', variable: 'DOCKER_PASSWORD')]) {
+                    sh '''
+                        echo $DOCKER_PASSWORD | docker login -u vinay8498 --password-stdin
+                        docker build -t $IMAGE_NAME .
+                        docker push $IMAGE_NAME
+                    '''
                 }
             }
         }
