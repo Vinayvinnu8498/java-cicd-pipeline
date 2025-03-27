@@ -9,7 +9,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', changelog: false, poll: false, url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
+                git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
             }
         }
 
@@ -21,20 +21,26 @@ pipeline {
                 }
             }
             steps {
-                sh 'mvn clean package -DskipTests'
+                sh 'cd math-utils && mvn clean package -DskipTests'
             }
         }
 
         stage('Test') {
+            agent {
+                docker {
+                    image 'maven:3.9-eclipse-temurin-17'
+                    args '-v /root/.m2:/root/.m2'
+                }
+            }
             steps {
-                sh 'mvn test'
+                sh 'cd math-utils && mvn test'
             }
         }
 
         stage('Static Code Analysis') {
             steps {
-                withSonarQubeEnv('SonarQubeServer') {
-                    sh 'mvn sonar:sonar -Dsonar.login=${SONAR_TOKEN}'
+                withSonarQubeEnv('MySonarQubeServer') {
+                    sh 'cd math-utils && mvn sonar:sonar -Dsonar.projectKey=java-cicd-pipeline -Dsonar.login=$SONAR_TOKEN'
                 }
             }
         }
@@ -42,10 +48,8 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 sh 'docker build -t vinay8498/java-cicd-pipeline:latest .'
-                withCredentials([usernamePassword(credentialsId: 'docker-token', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-                    sh 'docker push vinay8498/java-cicd-pipeline:latest'
-                }
+                sh 'echo $DOCKER_HUB_CREDENTIALS_PSW | docker login -u $DOCKER_HUB_CREDENTIALS_USR --password-stdin'
+                sh 'docker push vinay8498/java-cicd-pipeline:latest'
             }
         }
 
