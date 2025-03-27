@@ -9,7 +9,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
+                git url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git', branch: 'main'
             }
         }
 
@@ -29,29 +29,40 @@ pipeline {
 
         stage('Test') {
             steps {
-                echo 'Running tests (mock)...'
+                dir('math-utils') {
+                    sh 'mvn test'
+                }
             }
         }
 
         stage('Static Code Analysis') {
             steps {
                 dir('math-utils') {
-                    sh 'mvn sonar:sonar -Dsonar.projectKey=java-cicd-pipeline -Dsonar.host.url=http://sonar:9000 -Dsonar.login=$SONAR_TOKEN'
+                    sh """
+                        mvn sonar:sonar \
+                        -Dsonar.projectKey=java-cicd-pipeline \
+                        -Dsonar.host.url=http://localhost:9000 \
+                        -Dsonar.login=$SONAR_TOKEN
+                    """
                 }
             }
         }
 
         stage('Docker Build & Push') {
             steps {
-                sh 'docker build -t vinay8498/java-cicd-pipeline:latest .'
-                sh 'echo $DOCKER_HUB_CREDENTIALS_PSW | docker login -u $DOCKER_HUB_CREDENTIALS_USR --password-stdin'
-                sh 'docker push vinay8498/java-cicd-pipeline:latest'
+                script {
+                    dockerImage = docker.build("vinayvinnu8498/java-cicd-pipeline")
+                    docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-creds') {
+                        dockerImage.push("latest")
+                    }
+                }
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                sh 'kubectl apply -f deployment.yaml'
+                sh 'kubectl apply -f k8s/deployment.yaml'
+                sh 'kubectl apply -f k8s/service.yaml'
             }
         }
     }
