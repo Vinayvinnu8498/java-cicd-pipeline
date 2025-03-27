@@ -1,118 +1,68 @@
 pipeline {
-    agent none
+    agent any
 
     environment {
-        SONARQUBE_URL = 'http://localhost:9000'
-        SONARQUBE_TOKEN = credentials('SonarUser')
-        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-creds')
-        DOCKER_IMAGE = 'vinay8498/my-java-app'
-        DOCKER_TAG = 'latest'
+        DOCKER_USER = 'vinay8498'
+        DOCKER_TOKEN = credentials('docker-token')
+        SONAR_TOKEN = credentials('sonar-token')
     }
 
     stages {
-        stage('Clean Workspace') {
-            agent any
+        stage('Checkout') {
             steps {
-                cleanWs()
-                echo 'Workspace cleaned and ready.'
+                git branch: 'main',
+                    url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
             }
         }
 
-        stage('Build (Java 11)') {
-            agent {
-                docker {
-                    image 'maven:3.8.6-eclipse-temurin-11'
-                    args '-v %USERPROFILE%\\.m2:/root/.m2'
-                    reuseNode true
-                }
-            }
-            steps {
-                sh '''
-                    mvn clean package \
-                    -Dmaven.compiler.source=11 \
-                    -Dmaven.compiler.target=11 \
-                    -Djava.version=11
-                '''
-                stash includes: 'target/', name: 'compiled-artifacts'
-            }
-        }
-
-        stage('Unit Test (Java 17)') {
-            agent {
-                docker {
-                    image 'maven:3.9.4-eclipse-temurin-17'
-                    args '-v %USERPROFILE%\\.m2:/root/.m2'
-                    reuseNode true
-                }
-            }
-            steps {
-                unstash 'compiled-artifacts'
-                sh 'mvn test'
-            }
-            post {
-                always {
-                    junit 'target/surefire-reports/*.xml'
-                }
-            }
-        }
-
-        stage('SonarQube Analysis') {
-            agent {
-                docker {
-                    image 'maven:3.8.6-eclipse-temurin-8'
-                    args '-v %USERPROFILE%\\.m2:/root/.m2'
-                    reuseNode true
-                }
-            }
-            steps {
-                withSonarQubeEnv('SONARQUBE') {
-                    sh """
-                        mvn sonar:sonar \
-                        -Dsonar.projectKey=MyProject \
-                        -Dsonar.host.url=${SONARQUBE_URL} \
-                        -Dsonar.login=${SONARQUBE_TOKEN}
-                    """
-                }
-            }
-        }
-
-        stage('Build Docker Image') {
-            agent any
+        stage('Build') {
             steps {
                 script {
-                    sh 'ls -la'
-                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
-                }
-            }
-        }
-
-        stage('Push to Docker Hub') {
-            agent any
-            steps {
-                script {
-                    docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-creds') {
-                        docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
-                        echo "Successfully pushed ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                    docker.image('maven:3.8.6-eclipse-temurin-17').inside {
+                        sh 'mvn clean package -DskipTests'
                     }
                 }
             }
         }
-    }
 
-    post {
-        always {
-            echo 'Pipeline completed - cleaning up'
-            script {
-                node {
-                    cleanWs()
+        stage('Test') {
+            steps {
+                script {
+                    docker.image('openjdk:11-jdk').inside {
+                        sh 'java -version'
+                        // Replace with your test command if needed
+                    }
                 }
             }
         }
-        success {
-            echo 'Pipeline succeeded!'
+
+        stage('Static Code Analysis') {
+            steps {
+                script {
+                    docker.image('openjdk:8-jdk').inside {
+                        withSonarQubeEnv('MySonarQubeServer') {
+                            sh 'mvn sonar:sonar -Dsonar.login=$SONAR_TOKEN'
+                        }
+                    }
+                }
+            }
         }
-        failure {
-            echo 'Pipeline failed!'
+
+        stage('Docker Build & Push') {
+            steps {
+                script {
+                    docker.build('java-app')
+                    docker.withRegistry('', 'docker-hub-credentials') {
+                        docker.image('java-app').push('latest')
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh 'kubectl apply -f deployment.yaml'
+            }
         }
     }
 }
