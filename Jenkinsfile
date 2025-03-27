@@ -21,31 +21,37 @@ pipeline {
                 }
             }
             steps {
-                sh 'mvn clean package -DskipTests'
+                dir('math-utils') {
+                    sh 'mvn clean package -DskipTests'
+                }
             }
         }
 
         stage('Test') {
             steps {
-                echo 'Running tests...'
+                echo 'Running tests (mock)...'
             }
         }
 
         stage('Static Code Analysis') {
             steps {
-                echo 'Running SonarQube analysis...'
+                dir('math-utils') {
+                    sh 'mvn sonar:sonar -Dsonar.projectKey=java-cicd-pipeline -Dsonar.host.url=http://sonar:9000 -Dsonar.login=$SONAR_TOKEN'
+                }
             }
         }
 
         stage('Docker Build & Push') {
             steps {
-                echo 'Building and pushing Docker image...'
+                sh 'docker build -t vinay8498/java-cicd-pipeline:latest .'
+                sh 'echo $DOCKER_HUB_CREDENTIALS_PSW | docker login -u $DOCKER_HUB_CREDENTIALS_USR --password-stdin'
+                sh 'docker push vinay8498/java-cicd-pipeline:latest'
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                echo 'Deploying to Kubernetes...'
+                sh 'kubectl apply -f deployment.yaml'
             }
         }
     }
