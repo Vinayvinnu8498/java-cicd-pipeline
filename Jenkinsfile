@@ -2,14 +2,15 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_HUB_CREDENTIALS = credentials('dockerhub-creds')
         SONAR_TOKEN = credentials('sonarqube-token')
+        DOCKER_HUB_CREDENTIALS = credentials('dockerhub-creds')
     }
 
     stages {
+
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git', branch: 'main'
+                git 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
             }
         }
 
@@ -21,15 +22,21 @@ pipeline {
                 }
             }
             steps {
-                dir('math-utils') {
+                dir('java-cicd-pipeline/java-cicd-pipeline') {
                     sh 'mvn clean package -DskipTests'
                 }
             }
         }
 
         stage('Test') {
+            agent {
+                docker {
+                    image 'maven:3.9-eclipse-temurin-17'
+                    args '-v /root/.m2:/root/.m2'
+                }
+            }
             steps {
-                dir('math-utils') {
+                dir('java-cicd-pipeline/java-cicd-pipeline') {
                     sh 'mvn test'
                 }
             }
@@ -37,13 +44,10 @@ pipeline {
 
         stage('Static Code Analysis') {
             steps {
-                dir('math-utils') {
-                    sh """
-                        mvn sonar:sonar \
-                        -Dsonar.projectKey=java-cicd-pipeline \
-                        -Dsonar.host.url=http://localhost:9000 \
-                        -Dsonar.login=$SONAR_TOKEN
-                    """
+                withSonarQubeEnv('My SonarQube Server') {
+                    dir('java-cicd-pipeline/java-cicd-pipeline') {
+                        sh 'mvn sonar:sonar -Dsonar.login=${SONAR_TOKEN}'
+                    }
                 }
             }
         }
@@ -51,9 +55,9 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    dockerImage = docker.build("vinayvinnu8498/java-cicd-pipeline")
+                    dockerImage = docker.build("vinayvinnu8498/math-utils")
                     docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-creds') {
-                        dockerImage.push("latest")
+                        dockerImage.push('latest')
                     }
                 }
             }
@@ -61,8 +65,8 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
-                sh 'kubectl apply -f k8s/deployment.yaml'
-                sh 'kubectl apply -f k8s/service.yaml'
+                sh 'kubectl apply -f deployment.yaml'
+                sh 'kubectl rollout status deployment/math-utils-deployment'
             }
         }
     }
