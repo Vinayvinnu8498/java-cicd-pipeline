@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = 'vinay8498/java-cicd-pipeline'
+        DOCKER_HUB_CREDENTIALS = credentials('docker-token')
+        SONAR_TOKEN = credentials('sonar-token')
     }
 
     stages {
@@ -15,8 +16,8 @@ pipeline {
         stage('Build') {
             agent {
                 docker {
-                    image 'maven:3.8.7-openjdk-17'
-                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                    image 'maven:3.9-eclipse-temurin-17'
+                    args '-v /root/.m2:/root/.m2'
                 }
             }
             steps {
@@ -26,32 +27,24 @@ pipeline {
 
         stage('Test') {
             steps {
-                sh 'echo "Running tests..."'
                 sh 'mvn test'
             }
         }
 
         stage('Static Code Analysis') {
             steps {
-                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                    sh '''
-                        mvn sonar:sonar \
-                        -Dsonar.projectKey=java-cicd-pipeline \
-                        -Dsonar.host.url=http://sonar:9000 \
-                        -Dsonar.login=$SONAR_TOKEN
-                    '''
+                withSonarQubeEnv('SonarQubeServer') {
+                    sh 'mvn sonar:sonar -Dsonar.login=${SONAR_TOKEN}'
                 }
             }
         }
 
         stage('Docker Build & Push') {
             steps {
-                withCredentials([string(credentialsId: 'docker-token', variable: 'DOCKER_PASSWORD')]) {
-                    sh '''
-                        echo $DOCKER_PASSWORD | docker login -u vinay8498 --password-stdin
-                        docker build -t $IMAGE_NAME .
-                        docker push $IMAGE_NAME
-                    '''
+                sh 'docker build -t vinay8498/java-cicd-pipeline:latest .'
+                withCredentials([usernamePassword(credentialsId: 'docker-token', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                    sh 'docker push vinay8498/java-cicd-pipeline:latest'
                 }
             }
         }
