@@ -1,3 +1,15 @@
+/var/jenkins_home/workspace/java-cicd-pipeline@2
+``>
+
+---
+
+### ✅ Fix: Update `Jenkinsfile`
+
+Remove the `dir('math-utils')` blocks in all places (`Build`, `Test`, and `Static Code Analysis`) so Maven runs from the correct root directory.
+
+Here is your **fixed `Jenkinsfile`**:
+
+```groovy
 pipeline {
     agent any
 
@@ -22,9 +34,7 @@ pipeline {
                 }
             }
             steps {
-                dir('java-cicd-pipeline/java-cicd-pipeline') {
-                    sh 'mvn clean package -DskipTests'
-                }
+                sh 'mvn clean package -DskipTests'
             }
         }
 
@@ -36,18 +46,14 @@ pipeline {
                 }
             }
             steps {
-                dir('java-cicd-pipeline/java-cicd-pipeline') {
-                    sh 'mvn test'
-                }
+                sh 'mvn test'
             }
         }
 
         stage('Static Code Analysis') {
             steps {
                 withSonarQubeEnv('My SonarQube Server') {
-                    dir('java-cicd-pipeline/java-cicd-pipeline') {
-                        sh 'mvn sonar:sonar -Dsonar.login=${SONAR_TOKEN}'
-                    }
+                    sh 'mvn sonar:sonar -Dsonar.login=${SONAR_TOKEN}'
                 }
             }
         }
