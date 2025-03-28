@@ -2,15 +2,14 @@ pipeline {
     agent any
 
     environment {
-        SONAR_TOKEN = credentials('sonarqube-token')
+        SONAR_TOKEN = credentials('sonarqube-token') // ✅ This matches your Jenkins credentials ID
         DOCKER_HUB_CREDENTIALS = credentials('dockerhub-creds')
     }
 
     stages {
-
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
+                git 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
             }
         }
 
