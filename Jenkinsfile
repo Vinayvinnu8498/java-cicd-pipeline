@@ -1,5 +1,8 @@
 pipeline {
     agent any  // This will run the pipeline on any available Jenkins agent.
+    environment {
+        SONAR_TOKEN = credentials('sonar-token')  // Set your SonarQube token using Jenkins credentials.
+    }
     stages {
         stage('Checkout') {
             steps {
@@ -10,7 +13,7 @@ pipeline {
             agent {
                 docker {
                     image 'maven:3.8.3-openjdk-17'  // Use a different version of Maven Docker image
-                    args '-v /root/.m2:/root/.m2'
+                    args '-v /root/.m2:/root/.m2'  // Mount .m2 directory for caching dependencies
                 }
             }
             steps {
@@ -21,7 +24,7 @@ pipeline {
             agent {
                 docker {
                     image 'maven:3.8.3-openjdk-17'
-                    args '-v /root/.m2:/root/.m2'
+                    args '-v /root/.m2:/root/.m2'  // Mount .m2 directory for test dependencies
                 }
             }
             steps {
