@@ -9,14 +9,13 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
+                git credentialsId: 'docker-token', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git', branch: 'main'
             }
         }
 
         stage('Build') {
             steps {
-                sh 'mvn clean install'
+                sh 'mvn clean compile'
             }
         }
 
@@ -33,7 +32,7 @@ pipeline {
                         mvn sonar:sonar \
                         -Dsonar.projectKey=java-cicd-pipeline \
                         -Dsonar.host.url=http://localhost:9000 \
-                        -Dsonar.login=${SONAR_TOKEN}
+                        -Dsonar.login=$SONAR_TOKEN
                     '''
                 }
             }
@@ -42,9 +41,9 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    docker.withRegistry('', DOCKER_HUB_CREDENTIALS) {
+                    docker.withRegistry('https://index.docker.io/v1/', 'docker-token') {
                         def app = docker.build("vinay8498/java-cicd-pipeline")
-                        app.push()
+                        app.push("latest")
                     }
                 }
             }
