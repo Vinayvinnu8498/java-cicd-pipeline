@@ -1,39 +1,43 @@
 pipeline {
     agent {
         docker {
-            image 'maven:3.8.3-openjdk-17'  // Use the Docker image with Maven and OpenJDK
-            label 'any'  // Replace with 'any' to run on any available node or specify your node label
+            image 'maven:3.8.3-openjdk-17'  // Use a valid Docker image for Maven and OpenJDK
+            label 'any'  // Ensures it uses any available node/agent
         }
     }
     environment {
-        SONAR_TOKEN = credentials('sonarqube-token')  // Retrieve SonarQube token securely
+        SONAR_TOKEN = credentials('sonarqube-token')  // Use secure credentials for SonarQube token
     }
     stages {
         stage('Checkout SCM') {
             steps {
+                // Checkout code from the repository
                 checkout scm
             }
         }
+        
         stage('Build') {
             steps {
                 script {
-                    // Run Maven build
+                    // Run the Maven build process
                     sh 'mvn clean compile'
                 }
             }
         }
+        
         stage('Test') {
             steps {
                 script {
-                    // Run Maven tests
+                    // Run the Maven test process
                     sh 'mvn test'
                 }
             }
         }
+
         stage('Static Code Analysis') {
             steps {
                 script {
-                    // Run SonarQube analysis
+                    // Run SonarQube analysis with your SonarQube token and project details
                     sh """
                         mvn sonar:sonar \
                         -Dsonar.projectKey=java-cicd-pipeline \
@@ -43,29 +47,32 @@ pipeline {
                 }
             }
         }
+        
         stage('Docker Build & Push') {
             steps {
                 script {
-                    // Add your Docker build & push steps here
+                    // Build the Docker image and push it to DockerHub (or other registry)
                     sh 'docker build -t my-image .'
                     sh 'docker push my-image'
                 }
             }
         }
+        
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    // Add Kubernetes deployment steps here
+                    // Deploy the application to Kubernetes
                     sh 'kubectl apply -f deployment.yaml'
                 }
             }
         }
     }
+
     post {
         always {
-            // Ensure cleanWs is inside a node block
+            // Ensure that workspace is cleaned after the build completes
             node {
-                cleanWs()  // Make sure cleanWs is inside a node block
+                cleanWs()  // Clean up the workspace to avoid leftover files
             }
         }
     }
