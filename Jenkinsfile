@@ -1,36 +1,34 @@
 pipeline {
-    agent {
-        docker {
-            image 'maven:3.8.3-openjdk-17'  // Use Maven image with OpenJDK 17
-        }
-    }
+    agent any
+
     environment {
-        SONAR_TOKEN = credentials('sonarqube-token')  // Set your SonarQube token as environment variable
+        SONAR_TOKEN = credentials('sonarqube-token')  // Store your SonarQube token securely
     }
+
     stages {
         stage('Checkout SCM') {
             steps {
-                checkout scm  // Check out the code from the repository
+                checkout scm
             }
         }
 
         stage('Build') {
             steps {
-                sh 'mvn clean compile'  // Build the project with Maven
+                sh 'mvn clean compile'  // Build your project
             }
         }
 
         stage('Test') {
             steps {
-                sh 'mvn test'  // Run tests using Maven
+                sh 'mvn test'  // Run tests
             }
         }
 
         stage('Static Code Analysis') {
             steps {
-                withSonarQubeEnv('My SonarQube Server') {  // Use SonarQube for static code analysis
+                withSonarQubeEnv('My SonarQube Server') {
                     sh '''
-                        mvn sonar:sonar \
+                        mvn clean verify sonar:sonar \
                         -Dsonar.projectKey=java-cicd-pipeline \
                         -Dsonar.host.url=http://localhost:9000 \
                         -Dsonar.login=${SONAR_TOKEN}
@@ -41,14 +39,18 @@ pipeline {
 
         stage('Docker Build & Push') {
             steps {
-                sh 'docker build -t your-docker-image .'  // Build Docker image
-                sh 'docker push your-docker-image'  // Push Docker image to registry
+                script {
+                    docker.build('your-image-name') // Build Docker image
+                    docker.push('your-image-name')  // Push Docker image
+                }
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                sh 'kubectl apply -f k8s/deployment.yaml'  // Deploy the application to Kubernetes
+                script {
+                    // Add your Kubernetes deployment commands here
+                }
             }
         }
     }
