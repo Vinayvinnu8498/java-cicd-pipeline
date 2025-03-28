@@ -36,11 +36,14 @@ pipeline {
             steps {
                 withSonarQubeEnv('My SonarQube Server') {
                     sh '''
-                        mvn sonar:sonar \
+                        mvn clean verify sonar:sonar \
                         -Dsonar.projectKey=java-cicd-pipeline \
+                        -Dsonar.host.url=http://192.168.4.65:9000 \
                         -Dsonar.login=${SONAR_TOKEN}
                     '''
                 }
+            }
+        }
             }
         }
 
