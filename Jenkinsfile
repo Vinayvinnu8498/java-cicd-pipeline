@@ -10,7 +10,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
+                git 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
             }
         }
 
