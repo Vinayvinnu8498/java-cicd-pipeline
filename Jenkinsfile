@@ -1,15 +1,3 @@
-/var/jenkins_home/workspace/java-cicd-pipeline@2
-``>
-
----
-
-### ✅ Fix: Update `Jenkinsfile`
-
-Remove the `dir('math-utils')` blocks in all places (`Build`, `Test`, and `Static Code Analysis`) so Maven runs from the correct root directory.
-
-Here is your **fixed `Jenkinsfile`**:
-
-```groovy
 pipeline {
     agent any
 
