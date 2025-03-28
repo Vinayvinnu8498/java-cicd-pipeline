@@ -5,43 +5,65 @@ pipeline {
             label 'your-label'
         }
     }
+    environment {
+        SONAR_TOKEN = credentials('sonarqube-token')  // Retrieve SonarQube token securely
+    }
     stages {
-        stage('Checkout SCM') {
+        stage('Declarative: Checkout SCM') {
             steps {
                 checkout scm
             }
         }
         stage('Build') {
             steps {
-                sh 'mvn clean compile'
+                script {
+                    // Run Maven build
+                    sh 'mvn clean compile'
+                }
             }
         }
         stage('Test') {
             steps {
-                sh 'mvn test'
+                script {
+                    // Run Maven tests
+                    sh 'mvn test'
+                }
             }
         }
         stage('Static Code Analysis') {
             steps {
-                withSonarQubeEnv('My SonarQube Server') {
-                    sh 'mvn sonar:sonar -Dsonar.projectKey=java-cicd-pipeline -Dsonar.host.url=http://localhost:9000 -Dsonar.login=$SONAR_TOKEN'
+                script {
+                    // Run SonarQube analysis
+                    sh """
+                        mvn sonar:sonar \
+                        -Dsonar.projectKey=java-cicd-pipeline \
+                        -Dsonar.host.url=http://localhost:9000 \
+                        -Dsonar.login=${SONAR_TOKEN}
+                    """
                 }
             }
         }
         stage('Docker Build & Push') {
             steps {
-                // Docker build and push commands here
+                script {
+                    // Add your Docker build & push steps here
+                    sh 'docker build -t my-image .'
+                    sh 'docker push my-image'
+                }
             }
         }
         stage('Deploy to Kubernetes') {
             steps {
-                // Deployment commands here
+                script {
+                    // Add Kubernetes deployment steps here
+                    sh 'kubectl apply -f deployment.yaml'
+                }
             }
         }
     }
     post {
         always {
-            cleanWs()  // Make sure this is inside the 'node' block or in the 'post' block
+            cleanWs()  // Clean workspace after every run
         }
     }
 }
