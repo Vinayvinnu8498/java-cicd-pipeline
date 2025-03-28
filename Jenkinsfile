@@ -2,14 +2,14 @@ pipeline {
     agent {
         docker {
             image 'maven:3.8.3-openjdk-17'
-            label 'your-label'
+            label 'your-label'  // Make sure this label is valid and matches the node label in Jenkins
         }
     }
     environment {
         SONAR_TOKEN = credentials('sonarqube-token')  // Retrieve SonarQube token securely
     }
     stages {
-        stage('Declarative: Checkout SCM') {
+        stage('Checkout SCM') {
             steps {
                 checkout scm
             }
@@ -63,7 +63,9 @@ pipeline {
     }
     post {
         always {
-            cleanWs()  // Clean workspace after every run
+            node {
+                cleanWs()  // Make sure cleanWs is inside a node block
+            }
         }
     }
 }
