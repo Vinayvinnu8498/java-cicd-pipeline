@@ -1,9 +1,8 @@
 pipeline {
     agent {
         docker {
-            image 'maven:3.8.3-openjdk-17'
-            // Ensure this label matches your Jenkins node label or remove the label if not needed
-            label 'your-label'  
+            image 'maven:3.8.3-openjdk-17'  // Use the Docker image with Maven and OpenJDK
+            label 'any'  // Replace with 'any' to run on any available node or specify your node label
         }
     }
     environment {
@@ -64,7 +63,7 @@ pipeline {
     }
     post {
         always {
-            // Ensure cleanWs is within the node block
+            // Ensure cleanWs is inside a node block
             node {
                 cleanWs()  // Make sure cleanWs is inside a node block
             }
