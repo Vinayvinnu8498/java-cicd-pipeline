@@ -43,8 +43,9 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    dockerImage = docker.build("vinayvinnu8498/math-utils")
+                    dockerImage = docker.build("vinay8498/my-java-app:v10")
                     docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-creds') {
+                        dockerImage.push('v10')
                         dockerImage.push('latest')
                     }
                 }
