@@ -7,6 +7,11 @@ pipeline {
     }
 
     stages {
+        stage('Checkout') {
+            steps {
+                git 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
+            }
+        }
 
         stage('Build') {
             agent {
@@ -36,9 +41,8 @@ pipeline {
             steps {
                 withSonarQubeEnv('My SonarQube Server') {
                     sh '''
-                        mvn clean verify sonar:sonar \
+                        mvn sonar:sonar \
                         -Dsonar.projectKey=java-cicd-pipeline \
-                        -Dsonar.host.url=http://192.168.4.65:9000 \
                         -Dsonar.login=${SONAR_TOKEN}
                     '''
                 }
@@ -48,9 +52,8 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    dockerImage = docker.build("vinay8498/my-java-app:v10")
+                    dockerImage = docker.build("vinayvinnu8498/math-utils")
                     docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-creds') {
-                        dockerImage.push('v10')
                         dockerImage.push('latest')
                     }
                 }
