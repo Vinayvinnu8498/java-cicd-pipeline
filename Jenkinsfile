@@ -10,7 +10,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
+                git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
             }
         }
 
@@ -44,6 +44,7 @@ pipeline {
                     sh '''
                         mvn sonar:sonar \
                         -Dsonar.projectKey=java-cicd-pipeline \
+                        -Dsonar.host.url=http://host.docker.internal:9000 \
                         -Dsonar.login=${SONAR_TOKEN}
                     '''
                 }
