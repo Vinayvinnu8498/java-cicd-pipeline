@@ -2,8 +2,9 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = 'vinay8498/my-java-app'
-        DOCKER_TAG = 'v10'
+        SONAR_PROJECT_KEY = 'java-cicd-pipeline'
+        SONAR_PROJECT_NAME = 'java-cicd-pipeline'
+        SONAR_HOST_URL = 'http://localhost:9000'
     }
 
     stages {
@@ -48,17 +49,14 @@ pipeline {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                     withSonarQubeEnv('My SonarQube Server') {
                         sh '''
-                            echo Running SonarQube Analysis...
-                            mvn sonar:sonar \
-                            -Dsonar.projectKey=java-cicd-pipeline \
-                            -Dsonar.projectName=java-cicd-pipeline \
-                            -Dsonar.host.url=http://localhost:9000 \
-                            -Dsonar.login=${SONAR_TOKEN}
+                            echo "Running SonarQube Analysis..."
+                            mvn verify sonar:sonar \
+                                -Dsonar.projectKey=$SONAR_PROJECT_KEY \
+                                -Dsonar.projectName=$SONAR_PROJECT_NAME \
+                                -Dsonar.host.url=$SONAR_HOST_URL \
+                                -Dsonar.login=$SONAR_TOKEN
                         '''
                     }
-                }
-            }
-        }
                 }
             }
         }
@@ -66,9 +64,9 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    dockerImage = docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                    dockerImage = docker.build("vinayvinnu8498/math-utils")
                     docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-creds') {
-                        dockerImage.push()
+                        dockerImage.push('latest')
                     }
                 }
             }
@@ -77,11 +75,8 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
-                    sh '''
-                        echo "Deploying to Kubernetes..."
-                        kubectl apply -f deployment.yaml
-                        kubectl rollout status deployment/java-app
-                    '''
+                    sh 'kubectl apply -f deployment.yaml'
+                    sh 'kubectl rollout status deployment/math-utils-deployment'
                 }
             }
         }
@@ -90,9 +85,6 @@ pipeline {
     post {
         failure {
             echo '❌ Pipeline failed. Check the console output for more details.'
-        }
-        success {
-            echo '✅ Pipeline completed successfully!'
         }
     }
 }
