@@ -1,7 +1,7 @@
 pipeline {
-    agent any  // This will run the pipeline on any available Jenkins agent.
+    agent any
     environment {
-        SONAR_TOKEN = credentials('sonar-token')  // Set your SonarQube token using Jenkins credentials.
+        SONAR_TOKEN = credentials('sonar-token')
     }
     stages {
         stage('Checkout') {
@@ -12,8 +12,8 @@ pipeline {
         stage('Build') {
             agent {
                 docker {
-                    image 'maven:3.8.3-openjdk-17'  // Use a different version of Maven Docker image
-                    args '-v /root/.m2:/root/.m2'  // Mount .m2 directory for caching dependencies
+                    image 'maven:3.8.3-openjdk-17'
+                    args '-v /root/.m2:/root/.m2'
                 }
             }
             steps {
@@ -24,7 +24,7 @@ pipeline {
             agent {
                 docker {
                     image 'maven:3.8.3-openjdk-17'
-                    args '-v /root/.m2:/root/.m2'  // Mount .m2 directory for test dependencies
+                    args '-v /root/.m2:/root/.m2'
                 }
             }
             steps {
@@ -32,13 +32,19 @@ pipeline {
             }
         }
         stage('Static Code Analysis') {
+            agent {
+                docker {
+                    image 'maven:3.8.3-openjdk-17'
+                    args '-v /root/.m2:/root/.m2'
+                }
+            }
             steps {
                 withSonarQubeEnv('My SonarQube Server') {
                     sh '''
                         mvn sonar:sonar \
                         -Dsonar.projectKey=java-cicd-pipeline \
                         -Dsonar.host.url=http://localhost:9000 \
-                        -Dsonar.login=${SONAR_TOKEN}
+                        -Dsonar.login=$SONAR_TOKEN
                     '''
                 }
             }
@@ -55,8 +61,10 @@ pipeline {
         }
         stage('Deploy to Kubernetes') {
             steps {
-                sh 'kubectl apply -f deployment.yaml'
-                sh 'kubectl rollout status deployment/math-utils-deployment'
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                    sh 'kubectl apply -f deployment.yaml'
+                    sh 'kubectl rollout status deployment/math-utils-deployment'
+                }
             }
         }
     }
