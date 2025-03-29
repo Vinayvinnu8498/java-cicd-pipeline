@@ -38,18 +38,27 @@ pipeline {
         }
 
         stage('Static Code Analysis') {
+            agent {
+                docker {
+                    image 'maven:3.8.3-openjdk-17'
+                    args '-v /root/.m2:/root/.m2'
+                }
+            }
             steps {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                     withSonarQubeEnv('My SonarQube Server') {
                         sh '''
-                            echo "Running SonarQube Analysis..."
+                            echo Running SonarQube Analysis...
                             mvn sonar:sonar \
-                              -Dsonar.projectKey=java-cicd-pipeline \
-                              -Dsonar.projectName="java-cicd-pipeline" \
-                              -Dsonar.host.url=http://localhost:9000 \
-                              -Dsonar.login=$SONAR_TOKEN
+                            -Dsonar.projectKey=java-cicd-pipeline \
+                            -Dsonar.projectName=java-cicd-pipeline \
+                            -Dsonar.host.url=http://localhost:9000 \
+                            -Dsonar.login=${SONAR_TOKEN}
                         '''
                     }
+                }
+            }
+        }
                 }
             }
         }
