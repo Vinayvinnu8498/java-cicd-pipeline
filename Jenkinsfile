@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        SONAR_TOKEN = credentials('sonarqube-token')
+        SONAR_TOKEN = credentials('sonarqube-token')     // ✅ Secret text ID in Jenkins
         DOCKER_HUB_CREDENTIALS = credentials('dockerhub-creds')
     }
 
@@ -10,7 +10,8 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
+                git branch: 'main',
+                    url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
             }
         }
 
@@ -41,7 +42,7 @@ pipeline {
         stage('Static Code Analysis') {
             steps {
                 withSonarQubeEnv('My SonarQube Server') {
-                    sh "mvn sonar:sonar -Dsonar.login=$SONAR_TOKEN"
+                    sh 'mvn sonar:sonar -Dsonar.login=$SONAR_TOKEN'
                 }
             }
         }
