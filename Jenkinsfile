@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     environment {
-        SONAR_TOKEN = credentials('sonarqube-token')
         DOCKER_HUB_CREDENTIALS = credentials('dockerhub-creds')
     }
 
@@ -39,6 +38,9 @@ pipeline {
         }
 
         stage('Static Code Analysis') {
+            environment {
+                SONAR_TOKEN = credentials('sonar-token')
+            }
             steps {
                 withSonarQubeEnv('My SonarQube Server') {
                     sh 'mvn sonar:sonar -Dsonar.login=$SONAR_TOKEN'
@@ -49,7 +51,7 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    dockerImage = docker.build("vinayvinnu8498/math-utils")
+                    def dockerImage = docker.build("vinayvinnu8498/math-utils")
                     docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-creds') {
                         dockerImage.push('latest')
                     }
@@ -58,12 +60,6 @@ pipeline {
         }
 
         stage('Deploy to Kubernetes') {
-            agent {
-                docker {
-                    image 'bitnami/kubectl:latest'
-                    args '-v $HOME/.kube:/root/.kube'
-                }
-            }
             steps {
                 sh 'kubectl apply -f deployment.yaml'
                 sh 'kubectl rollout status deployment/math-utils-deployment'
