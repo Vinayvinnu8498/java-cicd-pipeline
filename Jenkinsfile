@@ -2,11 +2,12 @@ pipeline {
     agent any
 
     environment {
-        SONAR_HOST_URL = 'http://host.docker.internal:9000'
-        DOCKER_IMAGE = 'vinayvinnu8498/java-cicd-pipeline'
+        SONAR_TOKEN = credentials('sonarqube-token')
+        DOCKER_HUB_CREDENTIALS = credentials('dockerhub-creds')
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
@@ -14,42 +15,33 @@ pipeline {
         }
 
         stage('Build') {
-            steps {
-                script {
-                    docker.image('maven:3.8.3-openjdk-17').inside {
-                        sh 'mvn clean compile'
-                    }
+            agent {
+                docker {
+                    image 'maven:3.9-eclipse-temurin-17'
+                    args '-v /root/.m2:/root/.m2'
                 }
+            }
+            steps {
+                sh 'mvn clean package -DskipTests'
             }
         }
 
         stage('Test') {
-            steps {
-                script {
-                    docker.image('maven:3.8.3-openjdk-17').inside {
-                        sh 'mvn test'
-                    }
+            agent {
+                docker {
+                    image 'maven:3.9-eclipse-temurin-17'
+                    args '-v /root/.m2:/root/.m2'
                 }
+            }
+            steps {
+                sh 'mvn test'
             }
         }
 
         stage('Static Code Analysis') {
             steps {
-                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                    withSonarQubeEnv('My SonarQube Server') {
-                        script {
-                            docker.image('maven:3.8.3-openjdk-17').inside {
-                                sh '''
-                                    echo 'Running SonarQube Analysis...'
-                                    mvn verify sonar:sonar \
-                                      -Dsonar.projectKey=java-cicd-pipeline \
-                                      -Dsonar.projectName=java-cicd-pipeline \
-                                      -Dsonar.host.url=$SONAR_HOST_URL \
-                                      -Dsonar.login=$SONAR_TOKEN
-                                '''
-                            }
-                        }
-                    }
+                withSonarQubeEnv('My SonarQube Server') {
+                    sh 'mvn sonar:sonar -Dsonar.login=$SONAR_TOKEN'
                 }
             }
         }
@@ -57,32 +49,25 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    docker.withRegistry('', 'docker-token') {
-                        sh '''
-                            docker build -t $DOCKER_IMAGE .
-                            docker push $DOCKER_IMAGE
-                        '''
+                    dockerImage = docker.build("vinayvinnu8498/math-utils")
+                    docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-creds') {
+                        dockerImage.push('latest')
                     }
                 }
             }
         }
 
         stage('Deploy to Kubernetes') {
-            steps {
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
-                    sh 'kubectl apply -f deployment.yaml'
-                    sh 'kubectl rollout status deployment/math-utils-deployment'
+            agent {
+                docker {
+                    image 'bitnami/kubectl:latest'
+                    args '-v $HOME/.kube:/root/.kube'
                 }
             }
-        }
-    }
-
-    post {
-        success {
-            echo '✅ Pipeline completed successfully.'
-        }
-        failure {
-            echo '❌ Pipeline failed. Check the console output for more details.'
+            steps {
+                sh 'kubectl apply -f deployment.yaml'
+                sh 'kubectl rollout status deployment/math-utils-deployment'
+            }
         }
     }
 }
