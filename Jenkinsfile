@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        SONAR_TOKEN = credentials('SonarQube token for CI pipeline')
+        SONAR_TOKEN = credentials('sonarqube-token')
         DOCKER_HUB_CREDENTIALS = credentials('dockerhub-creds')
     }
 
