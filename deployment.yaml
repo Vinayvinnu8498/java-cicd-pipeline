@@ -2,8 +2,10 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: java-app
+  labels:
+    app: java-app
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: java-app
@@ -14,10 +16,10 @@ spec:
     spec:
       containers:
         - name: java-app
-          image: vinay8498/my-java-app:v10
+          image: vinay8498/my-java-app:latest
           ports:
             - containerPort: 8080
-
+          imagePullPolicy: Always
 ---
 apiVersion: v1
 kind: Service
@@ -28,7 +30,6 @@ spec:
     app: java-app
   ports:
     - protocol: TCP
-      port: 8080       # <- Expose service on port 8080
-      targetPort: 8080 # <- Route to container's port 8080
-      nodePort: 30080  # <- Optional: static NodePort for browser access
-  type: NodePort        # <- Use NodePort instead of LoadBalancer for Minikube
+      port: 80
+      targetPort: 8080
+  type: LoadBalancer
