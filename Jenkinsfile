@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     environment {
-        SONAR_TOKEN = credentials('sonarqube-token')
+        SONARQUBE_URL = 'http://host.docker.internal:9000'
+        SONARQUBE_TOKEN = credentials('SonarUser')
         DOCKER_HUB_CREDENTIALS = credentials('docker-token')
     }
 
@@ -22,7 +23,6 @@ pipeline {
             }
             steps {
                 sh 'mvn clean package -DskipTests'
-                stash includes: 'target/**', name: 'build-artifacts'
             }
         }
 
@@ -34,7 +34,6 @@ pipeline {
                 }
             }
             steps {
-                unstash 'build-artifacts'
                 sh 'mvn test'
             }
         }
@@ -47,22 +46,24 @@ pipeline {
                 }
             }
             steps {
-                unstash 'build-artifacts'
-                withSonarQubeEnv('My SonarQube Server') {
+                withSonarQubeEnv('SONARQUBE') {
                     sh """
                         mvn sonar:sonar \
-                        -Dsonar.login=${SONAR_TOKEN}
+                        -Dsonar.projectKey=MyProject \
+                        -Dsonar.host.url=${SONARQUBE_URL} \
+                        -Dsonar.login=${SONARQUBE_TOKEN}
                     """
                 }
             }
         }
 
         stage('Docker Build & Push') {
+            agent any
             steps {
                 script {
-                    dockerImage = docker.build("vinayvinnu8498/math-utils")
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-token') {
-                        dockerImage.push('latest')
+                        def image = docker.build("vinay8498/java-cicd-pipeline")
+                        image.push("latest")
                     }
                 }
             }
@@ -78,7 +79,10 @@ pipeline {
 
     post {
         always {
-            cleanWs()
+            echo '✅ Pipeline finished.'
+        }
+        failure {
+            echo '❌ Pipeline failed!'
         }
     }
 }
