@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         SONAR_TOKEN = credentials('sonarqube-token')
-        DOCKER_HUB_CREDENTIALS = credentials('dockerhub-creds')
+        DOCKER_HUB_CREDENTIALS = credentials('docker-token')
     }
 
     stages {
@@ -38,15 +38,9 @@ pipeline {
         }
 
         stage('Static Code Analysis') {
-            agent {
-                docker {
-                    image 'maven:3.9-eclipse-temurin-17'
-                    args '-v /root/.m2:/root/.m2'
-                }
-            }
             steps {
                 withSonarQubeEnv('My SonarQube Server') {
-                    sh 'mvn sonar:sonar -Dsonar.login=$SONAR_TOKEN'
+                    sh 'mvn sonar:sonar -Dsonar.login=${SONAR_TOKEN}'
                 }
             }
         }
@@ -55,7 +49,7 @@ pipeline {
             steps {
                 script {
                     dockerImage = docker.build("vinayvinnu8498/math-utils")
-                    docker.withRegistry('https://index.docker.io/v1/', DOCKER_HUB_CREDENTIALS) {
+                    docker.withRegistry('https://index.docker.io/v1/', 'docker-token') {
                         dockerImage.push('latest')
                     }
                 }
