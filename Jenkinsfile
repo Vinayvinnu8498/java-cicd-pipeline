@@ -22,6 +22,7 @@ pipeline {
             }
             steps {
                 sh 'mvn clean package -DskipTests'
+                stash includes: 'target/**', name: 'build-artifacts'
             }
         }
 
@@ -33,14 +34,25 @@ pipeline {
                 }
             }
             steps {
+                unstash 'build-artifacts'
                 sh 'mvn test'
             }
         }
 
         stage('Static Code Analysis') {
+            agent {
+                docker {
+                    image 'maven:3.9-eclipse-temurin-17'
+                    args '-v /root/.m2:/root/.m2'
+                }
+            }
             steps {
+                unstash 'build-artifacts'
                 withSonarQubeEnv('My SonarQube Server') {
-                    sh "mvn sonar:sonar -Dsonar.login=${SONAR_TOKEN}"
+                    sh """
+                        mvn sonar:sonar \
+                        -Dsonar.login=${SONAR_TOKEN}
+                    """
                 }
             }
         }
@@ -61,6 +73,12 @@ pipeline {
                 sh 'kubectl apply -f deployment.yaml'
                 sh 'kubectl rollout status deployment/math-utils-deployment'
             }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
         }
     }
 }
