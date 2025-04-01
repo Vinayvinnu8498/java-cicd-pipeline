@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        SONAR_TOKEN = credentials('SonarUser') // ✅ Make sure this matches the actual credential ID in Jenkins
+        SONAR_TOKEN = credentials('sonarqube-token')
         DOCKER_HUB_CREDENTIALS = credentials('docker-token')
     }
 
@@ -22,6 +22,7 @@ pipeline {
             }
             steps {
                 sh 'mvn clean package -DskipTests'
+                stash includes: 'target/**', name: 'build-artifacts'
             }
         }
 
@@ -33,14 +34,25 @@ pipeline {
                 }
             }
             steps {
+                unstash 'build-artifacts'
                 sh 'mvn test'
             }
         }
 
         stage('Static Code Analysis') {
+            agent {
+                docker {
+                    image 'maven:3.9-eclipse-temurin-17'
+                    args '-v /root/.m2:/root/.m2'
+                }
+            }
             steps {
-                withSonarQubeEnv('My SonarQube Server') { // ✅ Ensure this matches your SonarQube config in Jenkins
-                    sh 'mvn sonar:sonar -Dsonar.login=${SONAR_TOKEN}'
+                unstash 'build-artifacts'
+                withSonarQubeEnv('My SonarQube Server') {
+                    sh """
+                        mvn sonar:sonar \
+                        -Dsonar.login=${SONAR_TOKEN}
+                    """
                 }
             }
         }
@@ -66,13 +78,7 @@ pipeline {
 
     post {
         always {
-            echo '✅ Pipeline finished.'
-        }
-        success {
-            echo '🎉 Pipeline succeeded!'
-        }
-        failure {
-            echo '❌ Pipeline failed!'
+            cleanWs()
         }
     }
 }
