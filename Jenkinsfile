@@ -2,10 +2,8 @@ pipeline {
     agent any
 
     environment {
-        SONARQUBE_TOKEN = credentials('sonar-token')   // Your Sonar token ID in Jenkins
-        DOCKER_HUB_CREDENTIALS = credentials('docker-token') // DockerHub token ID
-        DOCKER_IMAGE = 'vinay8498/my-java-app'
-        DOCKER_TAG = 'latest'
+        SONAR_TOKEN = credentials('SonarUser') // ✅ Make sure this matches the actual credential ID in Jenkins
+        DOCKER_HUB_CREDENTIALS = credentials('docker-token')
     }
 
     stages {
@@ -19,7 +17,7 @@ pipeline {
             agent {
                 docker {
                     image 'maven:3.9-eclipse-temurin-17'
-                    args '-v $HOME/.m2:/root/.m2'
+                    args '-v /root/.m2:/root/.m2'
                 }
             }
             steps {
@@ -31,23 +29,18 @@ pipeline {
             agent {
                 docker {
                     image 'maven:3.9-eclipse-temurin-17'
-                    args '-v $HOME/.m2:/root/.m2'
+                    args '-v /root/.m2:/root/.m2'
                 }
             }
             steps {
                 sh 'mvn test'
             }
-            post {
-                always {
-                    junit '**/target/surefire-reports/*.xml'
-                }
-            }
         }
 
         stage('Static Code Analysis') {
             steps {
-                withSonarQubeEnv('My SonarQube Server') {
-                    sh "mvn sonar:sonar -Dsonar.login=${SONARQUBE_TOKEN}"
+                withSonarQubeEnv('My SonarQube Server') { // ✅ Ensure this matches your SonarQube config in Jenkins
+                    sh 'mvn sonar:sonar -Dsonar.login=${SONAR_TOKEN}'
                 }
             }
         }
@@ -55,9 +48,9 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    dockerImage = docker.build("${DOCKER_IMAGE}")
+                    dockerImage = docker.build("vinayvinnu8498/math-utils")
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-token') {
-                        dockerImage.push("${DOCKER_TAG}")
+                        dockerImage.push('latest')
                     }
                 }
             }
@@ -65,17 +58,18 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
-                    sh 'kubectl apply -f deployment.yaml'
-                    sh 'kubectl rollout status deployment/java-app'
-                }
+                sh 'kubectl apply -f deployment.yaml'
+                sh 'kubectl rollout status deployment/math-utils-deployment'
             }
         }
     }
 
     post {
+        always {
+            echo '✅ Pipeline finished.'
+        }
         success {
-            echo '🎉 Build and deployment successful!'
+            echo '🎉 Pipeline succeeded!'
         }
         failure {
             echo '❌ Pipeline failed!'
