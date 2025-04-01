@@ -40,7 +40,8 @@ pipeline {
         stage('Static Code Analysis') {
             steps {
                 withSonarQubeEnv('My SonarQube Server') {
-                    sh 'mvn sonar:sonar -Dsonar.login=$SONAR_TOKEN'
+                    // ❌ Removed -Dsonar.login, it is injected automatically
+                    sh 'mvn sonar:sonar'
                 }
             }
         }
