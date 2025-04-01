@@ -2,8 +2,7 @@ pipeline {
     agent any
 
     environment {
-        SONARQUBE_URL = 'http://host.docker.internal:9000'
-        SONARQUBE_TOKEN = credentials('SonarUser')
+        SONARQUBE_TOKEN = credentials('sonar-token')
         DOCKER_HUB_CREDENTIALS = credentials('docker-token')
     }
 
@@ -36,34 +35,27 @@ pipeline {
             steps {
                 sh 'mvn test'
             }
+            post {
+                always {
+                    junit 'target/surefire-reports/*.xml'
+                }
+            }
         }
 
         stage('Static Code Analysis') {
-            agent {
-                docker {
-                    image 'maven:3.9-eclipse-temurin-17'
-                    args '-v /root/.m2:/root/.m2'
-                }
-            }
             steps {
-                withSonarQubeEnv('SONARQUBE') {
-                    sh """
-                        mvn sonar:sonar \
-                        -Dsonar.projectKey=MyProject \
-                        -Dsonar.host.url=${SONARQUBE_URL} \
-                        -Dsonar.login=${SONARQUBE_TOKEN}
-                    """
+                withSonarQubeEnv('My SonarQube Server') {
+                    sh 'mvn sonar:sonar -Dsonar.login=${SONARQUBE_TOKEN}'
                 }
             }
         }
 
         stage('Docker Build & Push') {
-            agent any
             steps {
                 script {
+                    dockerImage = docker.build("vinayvinnu8498/math-utils")
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-token') {
-                        def image = docker.build("vinay8498/java-cicd-pipeline")
-                        image.push("latest")
+                        dockerImage.push('latest')
                     }
                 }
             }
@@ -78,11 +70,11 @@ pipeline {
     }
 
     post {
-        always {
-            echo '✅ Pipeline finished.'
+        success {
+            echo "✅ Pipeline succeeded!"
         }
         failure {
-            echo '❌ Pipeline failed!'
+            echo "❌ Pipeline failed!"
         }
     }
 }
