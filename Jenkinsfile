@@ -3,9 +3,9 @@ pipeline {
 
     environment {
         SONARQUBE_URL = 'http://host.docker.internal:9000'
-        SONARQUBE_TOKEN = credentials('SonarUser')
+        SONARQUBE_TOKEN = credentials('sonar-token')
         DOCKER_HUB_CREDENTIALS = credentials('docker-token')
-        DOCKER_IMAGE = 'vinayvinnu8498/math-utils'
+        DOCKER_IMAGE = 'vinay8498/my-java-app'
         DOCKER_TAG = 'latest'
     }
 
@@ -37,6 +37,11 @@ pipeline {
             }
             steps {
                 sh 'mvn test'
+            }
+            post {
+                always {
+                    junit 'target/surefire-reports/*.xml'
+                }
             }
         }
 
@@ -73,7 +78,7 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 sh 'kubectl apply -f deployment.yaml'
-                sh 'kubectl rollout status deployment/math-utils-deployment'
+                sh 'kubectl rollout status deployment/java-app'
             }
         }
     }
@@ -84,6 +89,9 @@ pipeline {
         }
         failure {
             echo '❌ Pipeline failed!'
+        }
+        always {
+            cleanWs()
         }
     }
 }
