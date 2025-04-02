@@ -77,8 +77,10 @@ pipeline {
 
     post {
         always {
-            echo 'Cleaning workspace...'
-            cleanWs()
+            node {
+                echo '🧹 Cleaning workspace...'
+                cleanWs()
+            }
         }
         success {
             echo '✅ Pipeline succeeded!'
