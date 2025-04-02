@@ -3,8 +3,10 @@ pipeline {
 
     environment {
         SONARQUBE_URL = 'http://host.docker.internal:9000'
-        SONAR_TOKEN = credentials('SonarUser')  // ✅ Corrected token name
+        SONARQUBE_TOKEN = credentials('SonarUser')
         DOCKER_HUB_CREDENTIALS = credentials('docker-token')
+        DOCKER_IMAGE = 'vinayvinnu8498/math-utils'
+        DOCKER_TAG = 'latest'
     }
 
     stages {
@@ -39,13 +41,19 @@ pipeline {
         }
 
         stage('Static Code Analysis') {
+            agent {
+                docker {
+                    image 'maven:3.9-eclipse-temurin-17'
+                    args '-v $HOME/.m2:/root/.m2'
+                }
+            }
             steps {
-                withSonarQubeEnv('SONARQUBE') {  // ✅ Match with Jenkins Sonar server alias
+                withSonarQubeEnv('SONARQUBE') {
                     sh """
                         mvn sonar:sonar \
                         -Dsonar.projectKey=MyProject \
                         -Dsonar.host.url=${SONARQUBE_URL} \
-                        -Dsonar.login=${SONAR_TOKEN}
+                        -Dsonar.login=${SONARQUBE_TOKEN}
                     """
                 }
             }
@@ -54,9 +62,9 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    def dockerImage = docker.build("vinayvinnu8498/math-utils")
+                    dockerImage = docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-token') {
-                        dockerImage.push('latest')
+                        dockerImage.push()
                     }
                 }
             }
@@ -71,9 +79,6 @@ pipeline {
     }
 
     post {
-        always {
-            echo 'Pipeline execution completed.'
-        }
         success {
             echo '✅ Pipeline succeeded!'
         }
