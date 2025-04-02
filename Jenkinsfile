@@ -7,6 +7,7 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
@@ -17,7 +18,7 @@ pipeline {
             agent {
                 docker {
                     image 'maven:3.9-eclipse-temurin-17'
-                    args '-v $HOME/.m2:/root/.m2'
+                    args '-v /root/.m2:/root/.m2'
                 }
             }
             steps {
@@ -29,7 +30,7 @@ pipeline {
             agent {
                 docker {
                     image 'maven:3.9-eclipse-temurin-17'
-                    args '-v $HOME/.m2:/root/.m2'
+                    args '-v /root/.m2:/root/.m2'
                 }
             }
             steps {
@@ -40,7 +41,12 @@ pipeline {
         stage('Static Code Analysis') {
             steps {
                 withSonarQubeEnv('My SonarQube Server') {
-                    sh 'mvn sonar:sonar -Dsonar.login=${SONARQUBE_TOKEN}'
+                    sh '''
+                        mvn sonar:sonar \
+                        -Dsonar.projectKey=MyProject \
+                        -Dsonar.host.url=http://host.docker.internal:9000 \
+                        -Dsonar.login=${SONARQUBE_TOKEN}
+                    '''
                 }
             }
         }
@@ -49,7 +55,7 @@ pipeline {
             steps {
                 script {
                     dockerImage = docker.build("vinayvinnu8498/math-utils")
-                    docker.withRegistry('https://index.docker.io/v1/', DOCKER_HUB_CREDENTIALS) {
+                    docker.withRegistry('https://index.docker.io/v1/', 'docker-token') {
                         dockerImage.push('latest')
                     }
                 }
