@@ -1,33 +1,32 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: java-app
+  name: math-utils-deployment
   labels:
-    app: java-app
+    app: math-utils
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: java-app
+      app: math-utils
   template:
     metadata:
       labels:
-        app: java-app
+        app: math-utils
     spec:
       containers:
-        - name: java-app
-          image: vinay8498/my-java-app:latest
+        - name: math-utils
+          image: vinayvinnu8498/math-utils:latest
           ports:
             - containerPort: 8080
-          imagePullPolicy: Always
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: java-app-service
+  name: math-utils-service
 spec:
   selector:
-    app: java-app
+    app: math-utils
   ports:
     - protocol: TCP
       port: 80

@@ -1,9 +1,14 @@
-FROM jenkins/jenkins:lts
+# Use official OpenJDK base image
+FROM eclipse-temurin:17-jdk
 
-USER root
+# Set work directory
+WORKDIR /app
 
-RUN apt-get update && \
-    apt-get install -y curl && \
-    curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.24.0/bin/linux/amd64/kubectl && \
-    chmod +x kubectl && \
-    mv kubectl /usr/local/bin/
+# Copy built JAR from Jenkins Maven stage (adjust if needed)
+COPY target/*.jar app.jar
+
+# Expose the port your app runs on (change if not 8080)
+EXPOSE 8080
+
+# Run the app
+ENTRYPOINT ["java", "-jar", "app.jar"]
