@@ -2,11 +2,8 @@ pipeline {
     agent any
 
     environment {
-        SONARQUBE_URL = 'http://host.docker.internal:9000'
-        SONARQUBE_TOKEN = credentials('SonarUser')
+        SONARQUBE_TOKEN = credentials('sonarqube-token')
         DOCKER_HUB_CREDENTIALS = credentials('docker-token')
-        DOCKER_IMAGE = 'vinayvinnu8498/math-utils'
-        DOCKER_TAG = 'latest'
     }
 
     stages {
@@ -20,7 +17,7 @@ pipeline {
             agent {
                 docker {
                     image 'maven:3.9-eclipse-temurin-17'
-                    args '-v $HOME/.m2:/root/.m2'
+                    args '-v /root/.m2:/root/.m2'
                 }
             }
             steps {
@@ -32,7 +29,7 @@ pipeline {
             agent {
                 docker {
                     image 'maven:3.9-eclipse-temurin-17'
-                    args '-v $HOME/.m2:/root/.m2'
+                    args '-v /root/.m2:/root/.m2'
                 }
             }
             steps {
@@ -41,20 +38,9 @@ pipeline {
         }
 
         stage('Static Code Analysis') {
-            agent {
-                docker {
-                    image 'maven:3.9-eclipse-temurin-17'
-                    args '-v $HOME/.m2:/root/.m2'
-                }
-            }
             steps {
-                withSonarQubeEnv('SONARQUBE') {
-                    sh """
-                        mvn sonar:sonar \\
-                        -Dsonar.projectKey=MyProject \\
-                        -Dsonar.host.url=${SONARQUBE_URL} \\
-                        -Dsonar.login=${SONARQUBE_TOKEN}
-                    """
+                withSonarQubeEnv('My SonarQube Server') {
+                    sh 'mvn sonar:sonar -Dsonar.login=${SONARQUBE_TOKEN}'
                 }
             }
         }
@@ -62,9 +48,9 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    dockerImage = docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                    dockerImage = docker.build("vinayvinnu8498/math-utils")
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-token') {
-                        dockerImage.push()
+                        dockerImage.push('latest')
                     }
                 }
             }
