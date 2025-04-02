@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     environment {
-        SONARQUBE_TOKEN = credentials('sonar-token')
+        SONARQUBE_URL = 'http://host.docker.internal:9000'
+        SONAR_TOKEN = credentials('SonarUser')  // ✅ Corrected token name
         DOCKER_HUB_CREDENTIALS = credentials('docker-token')
     }
 
@@ -17,7 +18,7 @@ pipeline {
             agent {
                 docker {
                     image 'maven:3.9-eclipse-temurin-17'
-                    args '-v /root/.m2:/root/.m2'
+                    args '-v $HOME/.m2:/root/.m2'
                 }
             }
             steps {
@@ -29,23 +30,23 @@ pipeline {
             agent {
                 docker {
                     image 'maven:3.9-eclipse-temurin-17'
-                    args '-v /root/.m2:/root/.m2'
+                    args '-v $HOME/.m2:/root/.m2'
                 }
             }
             steps {
                 sh 'mvn test'
             }
-            post {
-                always {
-                    junit 'target/surefire-reports/*.xml'
-                }
-            }
         }
 
         stage('Static Code Analysis') {
             steps {
-                withSonarQubeEnv('My SonarQube Server') {
-                    sh 'mvn sonar:sonar -Dsonar.login=${SONARQUBE_TOKEN}'
+                withSonarQubeEnv('SONARQUBE') {  // ✅ Match with Jenkins Sonar server alias
+                    sh """
+                        mvn sonar:sonar \
+                        -Dsonar.projectKey=MyProject \
+                        -Dsonar.host.url=${SONARQUBE_URL} \
+                        -Dsonar.login=${SONAR_TOKEN}
+                    """
                 }
             }
         }
@@ -53,7 +54,7 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    dockerImage = docker.build("vinayvinnu8498/math-utils")
+                    def dockerImage = docker.build("vinayvinnu8498/math-utils")
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-token') {
                         dockerImage.push('latest')
                     }
@@ -70,11 +71,14 @@ pipeline {
     }
 
     post {
+        always {
+            echo 'Pipeline execution completed.'
+        }
         success {
-            echo "✅ Pipeline succeeded!"
+            echo '✅ Pipeline succeeded!'
         }
         failure {
-            echo "❌ Pipeline failed!"
+            echo '❌ Pipeline failed!'
         }
     }
 }
