@@ -3,8 +3,10 @@ pipeline {
 
     environment {
         SONARQUBE_URL = 'http://host.docker.internal:9000'
-        SONARQUBE_TOKEN = credentials('sonar-token')
+        SONARQUBE_TOKEN = credentials('SonarUser')
         DOCKER_HUB_CREDENTIALS = credentials('docker-token')
+        DOCKER_IMAGE = 'vinayvinnu8498/math-utils'
+        DOCKER_TAG = 'latest'
     }
 
     stages {
@@ -17,9 +19,8 @@ pipeline {
         stage('Build') {
             agent {
                 docker {
-                    image 'maven:3.9.4-eclipse-temurin-17'
+                    image 'maven:3.9-eclipse-temurin-17'
                     args '-v $HOME/.m2:/root/.m2'
-                    reuseNode true
                 }
             }
             steps {
@@ -30,37 +31,30 @@ pipeline {
         stage('Test') {
             agent {
                 docker {
-                    image 'maven:3.9.4-eclipse-temurin-17'
+                    image 'maven:3.9-eclipse-temurin-17'
                     args '-v $HOME/.m2:/root/.m2'
-                    reuseNode true
                 }
             }
             steps {
                 sh 'mvn test'
-            }
-            post {
-                always {
-                    junit 'target/surefire-reports/*.xml'
-                }
             }
         }
 
         stage('Static Code Analysis') {
             agent {
                 docker {
-                    image 'maven:3.9.4-eclipse-temurin-17'
+                    image 'maven:3.9-eclipse-temurin-17'
                     args '-v $HOME/.m2:/root/.m2'
-                    reuseNode true
                 }
             }
             steps {
-                withSonarQubeEnv('My SonarQube Server') {
-                    sh '''
-                        mvn sonar:sonar \
-                        -Dsonar.projectKey=com.example:math-utils \
-                        -Dsonar.host.url=${SONARQUBE_URL} \
+                withSonarQubeEnv('SONARQUBE') {
+                    sh """
+                        mvn sonar:sonar \\
+                        -Dsonar.projectKey=MyProject \\
+                        -Dsonar.host.url=${SONARQUBE_URL} \\
                         -Dsonar.login=${SONARQUBE_TOKEN}
-                    '''
+                    """
                 }
             }
         }
@@ -68,9 +62,9 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    dockerImage = docker.build("vinayvinnu8498/math-utils")
+                    dockerImage = docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-token') {
-                        dockerImage.push("latest")
+                        dockerImage.push()
                     }
                 }
             }
@@ -81,6 +75,15 @@ pipeline {
                 sh 'kubectl apply -f deployment.yaml'
                 sh 'kubectl rollout status deployment/math-utils-deployment'
             }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Pipeline succeeded!'
+        }
+        failure {
+            echo '❌ Pipeline failed!'
         }
     }
 }
