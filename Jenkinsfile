@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     environment {
+        SONARQUBE_URL = 'http://host.docker.internal:9000'
         SONARQUBE_TOKEN = credentials('sonar-token')
         DOCKER_HUB_CREDENTIALS = credentials('docker-token')
     }
@@ -18,6 +19,7 @@ pipeline {
                 docker {
                     image 'maven:3.9.4-eclipse-temurin-17'
                     args '-v $HOME/.m2:/root/.m2'
+                    reuseNode true
                 }
             }
             steps {
@@ -30,10 +32,16 @@ pipeline {
                 docker {
                     image 'maven:3.9.4-eclipse-temurin-17'
                     args '-v $HOME/.m2:/root/.m2'
+                    reuseNode true
                 }
             }
             steps {
                 sh 'mvn test'
+            }
+            post {
+                always {
+                    junit 'target/surefire-reports/*.xml'
+                }
             }
         }
 
@@ -42,14 +50,15 @@ pipeline {
                 docker {
                     image 'maven:3.9.4-eclipse-temurin-17'
                     args '-v $HOME/.m2:/root/.m2'
+                    reuseNode true
                 }
             }
             steps {
                 withSonarQubeEnv('My SonarQube Server') {
                     sh '''
                         mvn sonar:sonar \
-                        -Dsonar.projectKey=java-cicd-pipeline \
-                        -Dsonar.host.url=http://localhost:9000 \
+                        -Dsonar.projectKey=com.example:math-utils \
+                        -Dsonar.host.url=${SONARQUBE_URL} \
                         -Dsonar.login=${SONARQUBE_TOKEN}
                     '''
                 }
@@ -61,7 +70,7 @@ pipeline {
                 script {
                     dockerImage = docker.build("vinayvinnu8498/math-utils")
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-token') {
-                        dockerImage.push('latest')
+                        dockerImage.push("latest")
                     }
                 }
             }
@@ -72,21 +81,6 @@ pipeline {
                 sh 'kubectl apply -f deployment.yaml'
                 sh 'kubectl rollout status deployment/math-utils-deployment'
             }
-        }
-    }
-
-    post {
-        always {
-            node {
-                echo '🧹 Cleaning workspace...'
-                cleanWs()
-            }
-        }
-        success {
-            echo '✅ Pipeline succeeded!'
-        }
-        failure {
-            echo '❌ Pipeline failed!'
         }
     }
 }
