@@ -42,7 +42,6 @@ pipeline {
                 docker {
                     image 'maven:3.9.4-eclipse-temurin-17'
                     args '-v $HOME/.m2:/root/.m2'
-                    reuseNode true
                 }
             }
             steps {
@@ -78,7 +77,14 @@ pipeline {
 
     post {
         always {
+            echo 'Cleaning workspace...'
             cleanWs()
+        }
+        success {
+            echo '✅ Pipeline succeeded!'
+        }
+        failure {
+            echo '❌ Pipeline failed!'
         }
     }
 }
