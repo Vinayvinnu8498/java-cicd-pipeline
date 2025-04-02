@@ -2,12 +2,13 @@ pipeline {
     agent any
 
     environment {
-        SONARQUBE_TOKEN = credentials('sonar-token') // make sure this matches Jenkins credentials
+        SONARQUBE_TOKEN = credentials('sonar-token')
         DOCKER_HUB_CREDENTIALS = credentials('docker-token')
+        DOCKER_IMAGE = 'vinayvinnu8498/math-utils'
+        DOCKER_TAG = 'latest'
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
@@ -43,7 +44,7 @@ pipeline {
                 withSonarQubeEnv('My SonarQube Server') {
                     sh '''
                         mvn sonar:sonar \
-                        -Dsonar.projectKey=MyProject \
+                        -Dsonar.projectKey=math-utils \
                         -Dsonar.host.url=http://host.docker.internal:9000 \
                         -Dsonar.login=${SONARQUBE_TOKEN}
                     '''
@@ -54,9 +55,9 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    dockerImage = docker.build("vinayvinnu8498/math-utils")
+                    def image = docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-token') {
-                        dockerImage.push('latest')
+                        image.push()
                     }
                 }
             }
@@ -72,10 +73,8 @@ pipeline {
 
     post {
         always {
-            node {
-                echo '✅ Pipeline finished.'
-                cleanWs()
-            }
+            echo '✅ Pipeline finished.'
+            cleanWs()
         }
         success {
             echo '🎉 Pipeline succeeded!'
