@@ -50,7 +50,7 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    dockerImage = docker.build("vinayvinnu8498/math-utils")
+                    def dockerImage = docker.build("vinayvinnu8498/math-utils")
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-token') {
                         dockerImage.push('latest')
                     }
