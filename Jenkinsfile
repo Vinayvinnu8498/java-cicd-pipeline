@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        SONAR_TOKEN = credentials('sonarqube-token')  // Ensure this ID is correct in Jenkins
+        SONARQUBE_TOKEN = credentials('sonar-token')
         DOCKER_HUB_CREDENTIALS = credentials('docker-token')
     }
 
@@ -38,20 +38,11 @@ pipeline {
         }
 
         stage('Static Code Analysis') {
-            agent {
-                docker {
-                    image 'maven:3.9-eclipse-temurin-17'
-                    args '-v /root/.m2:/root/.m2'
-                }
-            }
             steps {
                 withSonarQubeEnv('My SonarQube Server') {
-                    sh """
-                        mvn sonar:sonar \
-                        -Dsonar.projectKey=math-utils \
-                        -Dsonar.host.url=http://localhost:9000 \
-                        -Dsonar.login=${SONAR_TOKEN}
-                    """
+                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONARQUBE_TOKEN')]) {
+                        sh 'mvn sonar:sonar -Dsonar.login=$SONARQUBE_TOKEN'
+                    }
                 }
             }
         }
@@ -59,7 +50,7 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    def dockerImage = docker.build("vinayvinnu8498/math-utils")
+                    dockerImage = docker.build("vinayvinnu8498/math-utils")
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-token') {
                         dockerImage.push('latest')
                     }
@@ -72,6 +63,18 @@ pipeline {
                 sh 'kubectl apply -f deployment.yaml'
                 sh 'kubectl rollout status deployment/math-utils-deployment'
             }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+        success {
+            echo "✅ Pipeline completed successfully!"
+        }
+        failure {
+            echo "❌ Pipeline failed!"
         }
     }
 }
