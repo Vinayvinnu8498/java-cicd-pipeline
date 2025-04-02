@@ -2,55 +2,29 @@ pipeline {
     agent any
 
     environment {
-        SONARQUBE_TOKEN = credentials('sonar-token')
+        SONARQUBE_TOKEN = credentials('sonarqube-token')
         DOCKER_HUB_CREDENTIALS = credentials('docker-token')
-        DOCKER_IMAGE = 'vinayvinnu8498/java-cicd'
-        DOCKER_TAG = 'latest'
+    }
+
+    tools {
+        maven 'Maven3'
+        jdk 'JDK17'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
+                git url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git', branch: 'main'
             }
         }
 
         stage('Build') {
-            agent {
-                docker {
-                    image 'maven:3.9-eclipse-temurin-17'
-                    args '-v /root/.m2:/root/.m2'
-                }
-            }
             steps {
-                sh 'mvn clean package -DskipTests'
-            }
-        }
-
-        stage('Test') {
-            agent {
-                docker {
-                    image 'maven:3.9-eclipse-temurin-17'
-                    args '-v /root/.m2:/root/.m2'
-                }
-            }
-            steps {
-                sh 'mvn test'
-            }
-            post {
-                always {
-                    junit 'target/surefire-reports/*.xml'
-                }
+                sh 'mvn clean install'
             }
         }
 
         stage('Static Code Analysis') {
-            agent {
-                docker {
-                    image 'maven:3.9-eclipse-temurin-17'
-                    args '-v /root/.m2:/root/.m2'
-                }
-            }
             steps {
                 withSonarQubeEnv('My SonarQube Server') {
                     sh 'mvn sonar:sonar -Dsonar.login=${SONARQUBE_TOKEN}'
@@ -58,19 +32,12 @@ pipeline {
             }
         }
 
-        stage('Docker Build') {
-            steps {
-                script {
-                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
-                }
-            }
-        }
-
-        stage('Docker Push') {
+        stage('Docker Build & Push') {
             steps {
                 script {
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-token') {
-                        docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
+                        def app = docker.build("vinay8498/java-app")
+                        app.push("latest")
                     }
                 }
             }
@@ -79,13 +46,13 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 sh 'kubectl apply -f deployment.yaml'
-                sh 'kubectl rollout status deployment/java-cicd-deployment'
             }
         }
     }
 
     post {
         always {
+            echo '🧼 Cleaning workspace...'
             cleanWs()
         }
         success {
