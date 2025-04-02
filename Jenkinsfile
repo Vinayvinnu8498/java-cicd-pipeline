@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        SONARQUBE_TOKEN = credentials('sonar-token')
+        SONARQUBE_TOKEN = credentials('sonar-token') // make sure this matches Jenkins credentials
         DOCKER_HUB_CREDENTIALS = credentials('docker-token')
     }
 
@@ -72,8 +72,10 @@ pipeline {
 
     post {
         always {
-            echo '✅ Pipeline finished.'
-            cleanWs()
+            node {
+                echo '✅ Pipeline finished.'
+                cleanWs()
+            }
         }
         success {
             echo '🎉 Pipeline succeeded!'
