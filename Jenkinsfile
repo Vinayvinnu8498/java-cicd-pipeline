@@ -1,72 +1,80 @@
 pipeline {
-    agent any
-
-    tools {
-        maven 'Maven3'   // Make sure this exists under Jenkins -> Global Tool Configuration
-        jdk 'JDK17'      // Ensure JDK17 is installed and configured
-    }
+    agent none
 
     environment {
-        SONARQUBE_TOKEN = credentials('sonarqube-token')         // ID of SonarQube secret
-        DOCKER_HUB_CREDENTIALS = credentials('docker-token')     // DockerHub credentials ID
+        SONARQUBE_TOKEN = credentials('sonar-token')        // Sonar token ID
+        DOCKER_HUB_CREDENTIALS = credentials('docker-token') // Docker Hub credentials
     }
 
     stages {
-
         stage('Checkout') {
+            agent any
             steps {
-                git credentialsId: 'github-credentials',
-                    url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git',
-                    branch: 'main'
+                git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
             }
         }
 
         stage('Build') {
+            agent {
+                docker {
+                    image 'maven:3.9-eclipse-temurin-17'
+                    args '-v $HOME/.m2:/root/.m2'
+                }
+            }
             steps {
-                sh 'mvn clean install'
+                sh 'mvn clean install -DskipTests'
             }
         }
 
         stage('Static Code Analysis') {
+            agent {
+                docker {
+                    image 'maven:3.9-eclipse-temurin-17'
+                    args '-v $HOME/.m2:/root/.m2'
+                }
+            }
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh """
+                withSonarQubeEnv('My SonarQube Server') {
+                    sh '''
                         mvn sonar:sonar \
-                        -Dsonar.projectKey=MyProject \
+                        -Dsonar.projectKey=java-cicd-pipeline \
                         -Dsonar.login=${SONARQUBE_TOKEN}
-                    """
+                    '''
                 }
             }
         }
 
         stage('Docker Build & Push') {
+            agent any
             steps {
                 script {
-                    docker.withRegistry('', 'docker-token') {
-                        def app = docker.build("vinay8498/java-cicd-pipeline")
-                        app.push('latest')
+                    dockerImage = docker.build("vinayvinnu8498/java-cicd-pipeline")
+                    docker.withRegistry('https://index.docker.io/v1/', 'docker-token') {
+                        dockerImage.push('latest')
                     }
                 }
             }
         }
 
         stage('Deploy to Kubernetes') {
+            agent any
             steps {
                 sh 'kubectl apply -f deployment.yaml'
+                sh 'kubectl rollout status deployment/math-utils-deployment'
             }
         }
     }
 
     post {
         always {
-            echo '🧼 Cleaning workspace...'
+            echo '🧼 Cleaning up...'
             cleanWs()
-        }
-        failure {
-            echo '❌ Pipeline failed!'
         }
         success {
             echo '✅ Pipeline succeeded!'
+        }
+        failure {
+            echo '❌ Pipeline failed!'
         }
     }
 }
