@@ -1,15 +1,23 @@
 pipeline {
     agent any
 
+    tools {
+        maven 'Maven3'   // Make sure this exists under Jenkins -> Global Tool Configuration
+        jdk 'JDK17'      // Ensure JDK17 is installed and configured
+    }
+
     environment {
-        SONARQUBE_TOKEN = credentials('sonar-token')
-        DOCKER_HUB_CREDENTIALS = credentials('docker-token')
+        SONARQUBE_TOKEN = credentials('sonarqube-token')         // ID of SonarQube secret
+        DOCKER_HUB_CREDENTIALS = credentials('docker-token')     // DockerHub credentials ID
     }
 
     stages {
+
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
+                git credentialsId: 'github-credentials',
+                    url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git',
+                    branch: 'main'
             }
         }
 
@@ -21,8 +29,12 @@ pipeline {
 
         stage('Static Code Analysis') {
             steps {
-                withSonarQubeEnv('My SonarQube Server') {
-                    sh 'mvn sonar:sonar -Dsonar.login=${SONARQUBE_TOKEN}'
+                withSonarQubeEnv('SonarQube') {
+                    sh """
+                        mvn sonar:sonar \
+                        -Dsonar.projectKey=MyProject \
+                        -Dsonar.login=${SONARQUBE_TOKEN}
+                    """
                 }
             }
         }
@@ -30,9 +42,9 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    dockerImage = docker.build("vinayvinnu8498/math-utils")
-                    docker.withRegistry('https://index.docker.io/v1/', 'docker-token') {
-                        dockerImage.push('latest')
+                    docker.withRegistry('', 'docker-token') {
+                        def app = docker.build("vinay8498/java-cicd-pipeline")
+                        app.push('latest')
                     }
                 }
             }
@@ -41,7 +53,6 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 sh 'kubectl apply -f deployment.yaml'
-                sh 'kubectl rollout status deployment/math-utils-deployment'
             }
         }
     }
@@ -51,11 +62,11 @@ pipeline {
             echo '🧼 Cleaning workspace...'
             cleanWs()
         }
-        success {
-            echo '✅ Pipeline succeeded!'
-        }
         failure {
             echo '❌ Pipeline failed!'
+        }
+        success {
+            echo '✅ Pipeline succeeded!'
         }
     }
 }
