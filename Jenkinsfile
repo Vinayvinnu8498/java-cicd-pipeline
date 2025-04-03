@@ -2,14 +2,14 @@ pipeline {
     agent any
 
     environment {
-        SONARQUBE_TOKEN = credentials('sonarqube-token')
+        SONARQUBE_TOKEN = credentials('sonar-token')
         DOCKER_HUB_CREDENTIALS = credentials('docker-token')
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git', branch: 'main'
+                git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
             }
         }
 
@@ -30,9 +30,9 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
+                    dockerImage = docker.build("vinayvinnu8498/math-utils")
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-token') {
-                        def app = docker.build("vinay8498/java-app")
-                        app.push("latest")
+                        dockerImage.push('latest')
                     }
                 }
             }
@@ -41,6 +41,7 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 sh 'kubectl apply -f deployment.yaml'
+                sh 'kubectl rollout status deployment/math-utils-deployment'
             }
         }
     }
