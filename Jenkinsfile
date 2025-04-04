@@ -1,11 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        maven 'Maven 3.8.7'
-        jdk 'JDK17'
-    }
-
     environment {
         SONARQUBE_TOKEN = credentials('sonar-token')
         DOCKER_HUB_CREDENTIALS = credentials('docker-token')
@@ -19,18 +14,33 @@ pipeline {
         }
 
         stage('Build') {
+            agent {
+                docker {
+                    image 'maven:3.8.7-eclipse-temurin-17'
+                    args '-v $HOME/.m2:/root/.m2'
+                }
+            }
             steps {
                 sh 'mvn clean install -DskipTests'
+            }
+        }
+
+        stage('Test') {
+            agent {
+                docker {
+                    image 'maven:3.8.7-eclipse-temurin-17'
+                    args '-v $HOME/.m2:/root/.m2'
+                }
+            }
+            steps {
+                sh 'mvn test'
             }
         }
 
         stage('Static Code Analysis') {
             steps {
                 withSonarQubeEnv('My SonarQube Server') {
-                    sh """
-                        mvn sonar:sonar \
-                        -Dsonar.login=${SONARQUBE_TOKEN}
-                    """
+                    sh 'mvn sonar:sonar -Dsonar.login=$SONARQUBE_TOKEN'
                 }
             }
         }
@@ -38,9 +48,9 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    def image = docker.build('vinayvinnu8498/math-utils')
+                    dockerImage = docker.build("vinayvinnu8498/math-utils")
                     docker.withRegistry('https://index.docker.io/v1/', 'docker-token') {
-                        image.push('latest')
+                        dockerImage.push('latest')
                     }
                 }
             }
@@ -56,7 +66,7 @@ pipeline {
 
     post {
         always {
-            cleanWs()
+            echo 'Pipeline completed.'
         }
     }
 }
