@@ -19,12 +19,9 @@ pipeline {
 
         stage('Build (Java 11)') {
             steps {
-                dir('math-utils/java-cicd-pipeline') {
+                dir('math-utils') {
                     sh '''
-                        docker run --rm -v "$PWD:/app" -w /app maven:3.8.6-eclipse-temurin-11 mvn clean package \
-                        -Dmaven.compiler.source=11 \
-                        -Dmaven.compiler.target=11 \
-                        -Djava.version=11
+                        docker run --rm -v "$PWD:/app" -w /app maven:3.8.6-eclipse-temurin-11 mvn clean package
                     '''
                 }
             }
@@ -32,22 +29,22 @@ pipeline {
 
         stage('Unit Test (Java 21)') {
             steps {
-                dir('math-utils/java-cicd-pipeline') {
+                dir('math-utils') {
                     sh '''
-                        docker run --rm -v "$PWD:/app" -w /app maven:3.9.9-eclipse-temurin-21 mvn test -Dtest="com.example.calculator.CalculatorTest"
+                        docker run --rm -v "$PWD:/app" -w /app maven:3.9.9-eclipse-temurin-21 mvn test
                     '''
                 }
             }
             post {
                 always {
-                    junit 'math-utils/java-cicd-pipeline/target/surefire-reports/*.xml'
+                    junit 'math-utils/target/surefire-reports/*.xml'
                 }
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                dir('math-utils/java-cicd-pipeline') {
+                dir('math-utils') {
                     withSonarQubeEnv('SONARQUBE') {
                         sh '''
                             docker run --rm -v "$PWD:/app" -w /app maven:3.8.6-eclipse-temurin-17 mvn sonar:sonar \
@@ -62,10 +59,10 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                dir('math-utils/java-cicd-pipeline') {
+                dir('math-utils') {
                     script {
                         sh 'ls -la target/'
-                        docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                        docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", ".")
                         echo "✅ Docker image built."
                     }
                 }
