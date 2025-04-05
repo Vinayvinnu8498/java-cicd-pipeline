@@ -14,7 +14,7 @@ pipeline {
             agent any
             steps {
                 cleanWs()
-                git branch: 'main', url: 'https://github.com/BhanuAnusha/CalculatorApp.git'
+                git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
             }
         }
 
@@ -27,15 +27,13 @@ pipeline {
                 }
             }
             steps {
-                dir('calculator-app') {
-                    sh '''
-                        mvn clean package \
-                        -Dmaven.compiler.source=11 \
-                        -Dmaven.compiler.target=11 \
-                        -Djava.version=11
-                    '''
-                }
-                stash includes: 'calculator-app/target/**', name: 'compiled-artifacts'
+                sh '''
+                    mvn clean package \
+                    -Dmaven.compiler.source=11 \
+                    -Dmaven.compiler.target=11 \
+                    -Djava.version=11
+                '''
+                stash includes: 'target/**', name: 'compiled-artifacts'
             }
         }
 
@@ -49,13 +47,11 @@ pipeline {
             }
             steps {
                 unstash 'compiled-artifacts'
-                dir('calculator-app') {
-                    sh 'mvn test -Dtest="com.example.calculator.CalculatorTest"'
-                }
+                sh 'mvn test -Dtest="com.mathutils.MathUtilsTest"'
             }
             post {
                 always {
-                    junit 'calculator-app/target/surefire-reports/*.xml'
+                    junit 'target/surefire-reports/*.xml'
                 }
             }
         }
@@ -69,15 +65,13 @@ pipeline {
                 }
             }
             steps {
-                dir('calculator-app') {
-                    withSonarQubeEnv('SONARQUBE') {
-                        sh '''
-                            mvn sonar:sonar \
-                            -Dsonar.projectKey=MyProject \
-                            -Dsonar.host.url=${SONARQUBE_URL} \
-                            -Dsonar.login=${SONARQUBE_TOKEN}
-                        '''
-                    }
+                withSonarQubeEnv('SONARQUBE') {
+                    sh """
+                        mvn sonar:sonar \
+                        -Dsonar.projectKey=MyProject \
+                        -Dsonar.host.url=${SONARQUBE_URL} \
+                        -Dsonar.login=${SONARQUBE_TOKEN}
+                    """
                 }
             }
         }
@@ -86,9 +80,9 @@ pipeline {
             agent any
             steps {
                 script {
-                    sh 'ls -la calculator-app/target/'
-                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", 'calculator-app')
-                    echo "Docker image built successfully."
+                    sh 'ls -la target/'
+                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                    echo "✅ Docker image build complete"
                 }
             }
         }
@@ -99,7 +93,7 @@ pipeline {
                 script {
                     docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-creds') {
                         docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
-                        echo "Successfully pushed ${DOCKER_IMAGE}:${DOCKER_TAG} to Docker Hub."
+                        echo "🚀 Successfully pushed to Docker Hub"
                     }
                 }
             }
@@ -110,7 +104,8 @@ pipeline {
             steps {
                 script {
                     sh 'kubectl version --client'
-                    sh 'kubectl apply -f /var/jenkins_home/deploymentdh.yaml'
+                    sh 'kubectl apply -f deployment.yaml'
+                    echo "🚀 Deployed to Kubernetes"
                 }
             }
         }
