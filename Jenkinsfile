@@ -4,8 +4,8 @@ pipeline {
     environment {
         SONARQUBE_URL = 'http://host.docker.internal:9000'
         SONARQUBE_TOKEN = credentials('SonarUser')
-        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-creds')
-        DOCKER_IMAGE = 'kattabhanuanusha/calculatorjavacode'
+        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-creds')  // Ensure these credentials are in Jenkins
+        DOCKER_IMAGE = 'vinay8498/my-java-app'  // Updated to match your Docker repository
         DOCKER_TAG = 'latest'
     }
 
@@ -27,11 +27,9 @@ pipeline {
                 }
             }
             steps {
+                // No 'dir' block since pom.xml is in the root now
                 sh '''
-                    mvn clean package \
-                    -Dmaven.compiler.source=11 \
-                    -Dmaven.compiler.target=11 \
-                    -Djava.version=11
+                    mvn clean package -Dmaven.compiler.source=11 -Dmaven.compiler.target=11 -Djava.version=11
                 '''
                 stash includes: 'target/', name: 'compiled-artifacts'
             }
@@ -51,7 +49,7 @@ pipeline {
             }
             post {
                 always {
-                    junit 'target/surefire-reports/*.xml'
+                    junit '**/target/surefire-reports/*.xml'
                 }
             }
         }
@@ -80,9 +78,10 @@ pipeline {
             agent any
             steps {
                 script {
+                    // Verify files before build
                     sh 'ls -la target/'
                     docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", '.')
-                    echo "Docker image built successfully."
+                    echo "Build Docker image done"
                 }
             }
         }
@@ -93,7 +92,7 @@ pipeline {
                 script {
                     docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-creds') {
                         docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
-                        echo "Successfully pushed ${DOCKER_IMAGE}:${DOCKER_TAG} to Docker Hub."
+                        echo "Successfully pushed ${DOCKER_IMAGE}:${DOCKER_TAG}"
                     }
                 }
             }
@@ -103,7 +102,10 @@ pipeline {
             agent any
             steps {
                 script {
+                    // Verify kubectl is available
                     sh 'kubectl version --client'
+
+                    // Apply the deployment manifest
                     sh 'kubectl apply -f /var/jenkins_home/deploymentdh.yaml'
                 }
             }
