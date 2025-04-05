@@ -1,5 +1,5 @@
 pipeline {
-    agent none
+    agent any
 
     environment {
         SONARQUBE_URL = 'http://host.docker.internal:9000'
@@ -11,10 +11,9 @@ pipeline {
 
     stages {
         stage('Clean Workspace') {
-            agent any
             steps {
                 cleanWs()
-                git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
+                checkout scm  // This ensures the Git repository is correctly fetched
             }
         }
 
@@ -28,11 +27,7 @@ pipeline {
             }
             steps {
                 sh '''
-                    # Clean and build with Java 11
-                    mvn clean package \
-                    -Dmaven.compiler.source=11 \
-                    -Dmaven.compiler.target=11 \
-                    -Djava.version=11
+                    mvn clean package -Dmaven.compiler.source=11 -Dmaven.compiler.target=11 -Djava.version=11
                 '''
                 stash includes: 'target/', name: 'compiled-artifacts'
             }
@@ -68,10 +63,7 @@ pipeline {
             steps {
                 withSonarQubeEnv('SONARQUBE') {
                     sh """
-                        mvn sonar:sonar \
-                        -Dsonar.projectKey=MyProject \
-                        -Dsonar.host.url=${SONARQUBE_URL} \
-                        -Dsonar.login=${SONARQUBE_TOKEN}
+                        mvn sonar:sonar -Dsonar.projectKey=MyProject -Dsonar.host.url=${SONARQUBE_URL} -Dsonar.login=${SONARQUBE_TOKEN}
                     """
                 }
             }
@@ -81,10 +73,7 @@ pipeline {
             agent any
             steps {
                 script {
-                    // Verify files before build
-                    sh 'ls -la target/'
                     docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", '.')
-                    echo "Build Docker image done"
                 }
             }
         }
@@ -95,7 +84,6 @@ pipeline {
                 script {
                     docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-creds') {
                         docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
-                        echo "Successfully pushed ${DOCKER_IMAGE}:${DOCKER_TAG}"
                     }
                 }
             }
@@ -105,10 +93,7 @@ pipeline {
             agent any
             steps {
                 script {
-                    // Verify kubectl is available
                     sh 'kubectl version --client'
-
-                    // Apply the deployment manifest
                     sh 'kubectl apply -f /var/jenkins_home/deploymentdh.yaml'
                 }
             }
