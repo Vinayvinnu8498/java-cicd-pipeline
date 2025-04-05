@@ -4,8 +4,8 @@ pipeline {
     environment {
         SONARQUBE_URL = 'http://host.docker.internal:9000'
         SONARQUBE_TOKEN = credentials('SonarUser')
-        DOCKER_HUB_CREDENTIALS = credentials('docker-token') // Fixed ID
-        DOCKER_IMAGE = 'kattabhanuanusha/calculatorjavacode'
+        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-creds')
+        DOCKER_IMAGE = 'vinay8498/my-java-app'
         DOCKER_TAG = 'latest'
     }
 
@@ -13,7 +13,7 @@ pipeline {
         stage('Clean Workspace') {
             steps {
                 cleanWs()
-                git branch: 'main', url: 'https://github.com/BhanuAnusha/CalculatorApp.git'
+                git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
             }
         }
 
@@ -67,7 +67,7 @@ pipeline {
         stage('Push to Docker Hub') {
             steps {
                 script {
-                    docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
+                    docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-creds') {
                         docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
                         echo "✅ Docker image pushed to DockerHub."
                     }
