@@ -21,7 +21,7 @@ pipeline {
             steps {
                 sh '''
                     docker run --rm -v "$PWD:/app" -w /app maven:3.8.6-eclipse-temurin-11 \
-                    mvn clean package -Dmaven.compiler.source=11 -Dmaven.compiler.target=11 -Djava.version=11
+                    mvn clean package -Dmaven.compiler.source=11 -Dmaven.compiler.target=11
                 '''
             }
         }
@@ -58,7 +58,6 @@ pipeline {
             steps {
                 script {
                     docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
-                    echo "✅ Docker image built."
                 }
             }
         }
@@ -68,7 +67,6 @@ pipeline {
                 script {
                     docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-creds') {
                         docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
-                        echo "✅ Docker image pushed to DockerHub."
                     }
                 }
             }
