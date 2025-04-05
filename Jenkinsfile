@@ -4,7 +4,7 @@ pipeline {
     environment {
         SONARQUBE_URL = 'http://host.docker.internal:9000'
         SONARQUBE_TOKEN = credentials('SonarUser')
-        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-creds')
+        DOCKER_HUB_CREDENTIALS = credentials('docker-token') // Fixed ID
         DOCKER_IMAGE = 'kattabhanuanusha/calculatorjavacode'
         DOCKER_TAG = 'latest'
     }
@@ -67,7 +67,7 @@ pipeline {
         stage('Push to Docker Hub') {
             steps {
                 script {
-                    docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-creds') {
+                    docker.withRegistry('https://registry.hub.docker.com', 'docker-token') {
                         docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
                         echo "✅ Docker image pushed to DockerHub."
                     }
