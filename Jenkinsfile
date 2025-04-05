@@ -30,8 +30,9 @@ pipeline {
                 dir('calculator-app') {
                     sh '''
                         mvn clean package \
-                            -Dmaven.compiler.source=11 \
-                            -Dmaven.compiler.target=11
+                        -Dmaven.compiler.source=11 \
+                        -Dmaven.compiler.target=11 \
+                        -Djava.version=11
                     '''
                 }
                 stash includes: 'calculator-app/target/**', name: 'compiled-artifacts'
@@ -72,9 +73,9 @@ pipeline {
                     withSonarQubeEnv('SONARQUBE') {
                         sh '''
                             mvn sonar:sonar \
-                                -Dsonar.projectKey=MyProject \
-                                -Dsonar.host.url=$SONARQUBE_URL \
-                                -Dsonar.login=$SONARQUBE_TOKEN
+                            -Dsonar.projectKey=MyProject \
+                            -Dsonar.host.url=${SONARQUBE_URL} \
+                            -Dsonar.login=${SONARQUBE_TOKEN}
                         '''
                     }
                 }
@@ -85,9 +86,9 @@ pipeline {
             agent any
             steps {
                 script {
-                    sh 'ls -la calculator-app/target/' // verify JAR exists
+                    sh 'ls -la calculator-app/target/'
                     docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", 'calculator-app')
-                    echo "✅ Docker image built: ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                    echo "Docker image built successfully."
                 }
             }
         }
@@ -98,7 +99,7 @@ pipeline {
                 script {
                     docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-creds') {
                         docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
-                        echo "🚀 Successfully pushed: ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                        echo "Successfully pushed ${DOCKER_IMAGE}:${DOCKER_TAG} to Docker Hub."
                     }
                 }
             }
@@ -110,7 +111,6 @@ pipeline {
                 script {
                     sh 'kubectl version --client'
                     sh 'kubectl apply -f /var/jenkins_home/deploymentdh.yaml'
-                    echo "🚀 Deployed to Kubernetes"
                 }
             }
         }
