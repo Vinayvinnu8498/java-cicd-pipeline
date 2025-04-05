@@ -82,7 +82,7 @@ pipeline {
                 script {
                     sh 'ls -la target/'
                     docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", '.')
-                    echo "✅ Docker image build completed"
+                    echo "Docker image built successfully."
                 }
             }
         }
@@ -93,7 +93,7 @@ pipeline {
                 script {
                     docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-creds') {
                         docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
-                        echo "🚀 Docker image pushed to Docker Hub"
+                        echo "Successfully pushed ${DOCKER_IMAGE}:${DOCKER_TAG} to Docker Hub."
                     }
                 }
             }
