@@ -14,7 +14,7 @@ pipeline {
             agent any
             steps {
                 cleanWs()
-                git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
+                git branch: 'main', url: 'https://github.com/BhanuAnusha/CalculatorApp.git'
             }
         }
 
@@ -33,7 +33,7 @@ pipeline {
                     -Dmaven.compiler.target=11 \
                     -Djava.version=11
                 '''
-                stash includes: 'target/**', name: 'compiled-artifacts'
+                stash includes: 'target/', name: 'compiled-artifacts'
             }
         }
 
@@ -47,7 +47,7 @@ pipeline {
             }
             steps {
                 unstash 'compiled-artifacts'
-                sh 'mvn test -Dtest="com.mathutils.MathUtilsTest"'
+                sh 'mvn test -Dtest="com.example.calculator.CalculatorTest"'
             }
             post {
                 always {
@@ -81,8 +81,8 @@ pipeline {
             steps {
                 script {
                     sh 'ls -la target/'
-                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
-                    echo "✅ Docker image build complete"
+                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", '.')
+                    echo "✅ Docker image built successfully"
                 }
             }
         }
@@ -93,7 +93,7 @@ pipeline {
                 script {
                     docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-creds') {
                         docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
-                        echo "🚀 Successfully pushed to Docker Hub"
+                        echo "🚀 Image pushed: ${DOCKER_IMAGE}:${DOCKER_TAG}"
                     }
                 }
             }
@@ -104,8 +104,7 @@ pipeline {
             steps {
                 script {
                     sh 'kubectl version --client'
-                    sh 'kubectl apply -f deployment.yaml'
-                    echo "🚀 Deployed to Kubernetes"
+                    sh 'kubectl apply -f /var/jenkins_home/deploymentdh.yaml'
                 }
             }
         }
