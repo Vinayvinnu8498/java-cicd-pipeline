@@ -19,52 +19,46 @@ pipeline {
 
         stage('Build (Java 11)') {
             steps {
-                dir('math-utils') {
-                    sh '''
-                        docker run --rm -v "$PWD:/app" -w /app maven:3.8.6-eclipse-temurin-11 mvn clean package
-                    '''
-                }
+                sh '''
+                    docker run --rm -v "$PWD:/app" -w /app maven:3.8.6-eclipse-temurin-11 \
+                    mvn clean package -Dmaven.compiler.source=11 -Dmaven.compiler.target=11 -Djava.version=11
+                '''
             }
         }
 
         stage('Unit Test (Java 21)') {
             steps {
-                dir('math-utils') {
-                    sh '''
-                        docker run --rm -v "$PWD:/app" -w /app maven:3.9.9-eclipse-temurin-21 mvn test
-                    '''
-                }
+                sh '''
+                    docker run --rm -v "$PWD:/app" -w /app maven:3.9.6-eclipse-temurin-21 \
+                    mvn test -Dtest="com.mathutils.MathUtilsTest"
+                '''
             }
             post {
                 always {
-                    junit 'math-utils/target/surefire-reports/*.xml'
+                    junit 'target/surefire-reports/*.xml'
                 }
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                dir('math-utils') {
-                    withSonarQubeEnv('SONARQUBE') {
-                        sh '''
-                            docker run --rm -v "$PWD:/app" -w /app maven:3.8.6-eclipse-temurin-17 mvn sonar:sonar \
-                            -Dsonar.projectKey=MyProject \
-                            -Dsonar.host.url=$SONARQUBE_URL \
-                            -Dsonar.login=$SONARQUBE_TOKEN
-                        '''
-                    }
+                withSonarQubeEnv('SONARQUBE') {
+                    sh '''
+                        docker run --rm -v "$PWD:/app" -w /app maven:3.8.6-eclipse-temurin-17 \
+                        mvn sonar:sonar \
+                        -Dsonar.projectKey=MyProject \
+                        -Dsonar.host.url=$SONARQUBE_URL \
+                        -Dsonar.login=$SONARQUBE_TOKEN
+                    '''
                 }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                dir('math-utils') {
-                    script {
-                        sh 'ls -la target/'
-                        docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", ".")
-                        echo "✅ Docker image built."
-                    }
+                script {
+                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                    echo "✅ Docker image built."
                 }
             }
         }
@@ -83,7 +77,7 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 sh 'kubectl version --client'
-                sh 'kubectl apply -f /var/jenkins_home/deploymentdh.yaml'
+                sh 'kubectl apply -f deployment.yaml'
             }
         }
     }
