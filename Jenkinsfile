@@ -5,7 +5,7 @@ pipeline {
         SONARQUBE_URL = 'http://host.docker.internal:9000'
         SONARQUBE_TOKEN = credentials('SonarUser')
         DOCKER_HUB_CREDENTIALS = credentials('docker-hub-creds')
-        DOCKER_IMAGE = 'vinay8498/my-java-app'  // Update to your Docker Hub image name
+        DOCKER_IMAGE = 'vinay8498/my-java-app'
         DOCKER_TAG = 'latest'
     }
 
@@ -28,6 +28,7 @@ pipeline {
             }
             steps {
                 sh '''
+                    # Clean and build with Java 11
                     mvn clean package \
                     -Dmaven.compiler.source=11 \
                     -Dmaven.compiler.target=11 \
@@ -47,7 +48,7 @@ pipeline {
             }
             steps {
                 unstash 'compiled-artifacts'
-                sh 'mvn test'
+                sh 'mvn test -Dtest="com.example.calculator.CalculatorTest"'
             }
             post {
                 always {
@@ -80,6 +81,7 @@ pipeline {
             agent any
             steps {
                 script {
+                    // Verify files before build
                     sh 'ls -la target/'
                     docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", '.')
                     echo "Build Docker image done"
@@ -103,7 +105,10 @@ pipeline {
             agent any
             steps {
                 script {
+                    // Verify kubectl is available
                     sh 'kubectl version --client'
+
+                    // Apply the deployment manifest
                     sh 'kubectl apply -f /var/jenkins_home/deploymentdh.yaml'
                 }
             }
