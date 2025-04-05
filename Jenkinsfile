@@ -14,7 +14,7 @@ pipeline {
             agent any
             steps {
                 cleanWs()
-                git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline'
+                git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
             }
         }
 
@@ -82,7 +82,7 @@ pipeline {
                 script {
                     sh 'ls -la target/'
                     docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", '.')
-                    echo "✅ Docker image build complete"
+                    echo "✅ Docker image build completed"
                 }
             }
         }
@@ -93,7 +93,7 @@ pipeline {
                 script {
                     docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-creds') {
                         docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
-                        echo "✅ Successfully pushed ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                        echo "🚀 Docker image pushed to Docker Hub"
                     }
                 }
             }
