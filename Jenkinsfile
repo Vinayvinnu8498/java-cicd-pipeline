@@ -10,6 +10,7 @@ pipeline {
     }
 
     stages {
+
         stage('Clean Workspace') {
             steps {
                 cleanWs()
@@ -20,8 +21,11 @@ pipeline {
         stage('Build (Java 11)') {
             steps {
                 sh '''
-                    docker run --rm -v "$PWD:/app" -w /app maven:3.8.6-eclipse-temurin-11 \
-                    mvn clean package -Dmaven.compiler.source=11 -Dmaven.compiler.target=11
+                    docker run --rm \
+                      -v "$PWD:/app" \
+                      -w /app \
+                      maven:3.8.6-eclipse-temurin-11 \
+                      mvn clean package -Dmaven.compiler.source=11 -Dmaven.compiler.target=11
                 '''
             }
         }
@@ -29,8 +33,11 @@ pipeline {
         stage('Unit Test (Java 21)') {
             steps {
                 sh '''
-                    docker run --rm -v "$PWD:/app" -w /app maven:3.9.6-eclipse-temurin-21 \
-                    mvn test -Dtest="com.mathutils.MathUtilsTest"
+                    docker run --rm \
+                      -v "$PWD:/app" \
+                      -w /app \
+                      maven:3.9.6-eclipse-temurin-21 \
+                      mvn test -Dtest="com.mathutils.MathUtilsTest"
                 '''
             }
             post {
@@ -44,11 +51,14 @@ pipeline {
             steps {
                 withSonarQubeEnv('SONARQUBE') {
                     sh '''
-                        docker run --rm -v "$PWD:/app" -w /app maven:3.8.6-eclipse-temurin-17 \
-                        mvn sonar:sonar \
-                        -Dsonar.projectKey=MyProject \
-                        -Dsonar.host.url=$SONARQUBE_URL \
-                        -Dsonar.login=$SONARQUBE_TOKEN
+                        docker run --rm \
+                          -v "$PWD:/app" \
+                          -w /app \
+                          maven:3.8.6-eclipse-temurin-17 \
+                          mvn sonar:sonar \
+                          -Dsonar.projectKey=MyProject \
+                          -Dsonar.host.url=$SONARQUBE_URL \
+                          -Dsonar.login=$SONARQUBE_TOKEN
                     '''
                 }
             }
