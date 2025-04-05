@@ -4,8 +4,8 @@ pipeline {
     environment {
         SONARQUBE_URL = 'http://host.docker.internal:9000'
         SONARQUBE_TOKEN = credentials('SonarUser')
-        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-creds')  // Ensure these credentials are in Jenkins
-        DOCKER_IMAGE = 'vinay8498/my-java-app'  // Updated to match your Docker repository
+        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-creds')
+        DOCKER_IMAGE = 'vinay8498/my-java-app'
         DOCKER_TAG = 'latest'
     }
 
@@ -27,9 +27,12 @@ pipeline {
                 }
             }
             steps {
-                // No 'dir' block since pom.xml is in the root now
                 sh '''
-                    mvn clean package -Dmaven.compiler.source=11 -Dmaven.compiler.target=11 -Djava.version=11
+                    # Clean and build with Java 11
+                    mvn clean package \
+                    -Dmaven.compiler.source=11 \
+                    -Dmaven.compiler.target=11 \
+                    -Djava.version=11
                 '''
                 stash includes: 'target/', name: 'compiled-artifacts'
             }
