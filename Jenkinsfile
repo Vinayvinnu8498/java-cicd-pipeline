@@ -2,10 +2,10 @@ pipeline {
     agent none
 
     environment {
-        SONARQUBE_URL = 'http://localhost:9000'
-        SONARQUBE_TOKEN = credentials('sonar-token')
-        DOCKER_HUB_CREDENTIALS = credentials('docker-token')
-        DOCKER_IMAGE = 'vinayvinnu8498/mathutils'
+        SONARQUBE_URL = 'http://host.docker.internal:9000'
+        SONARQUBE_TOKEN = credentials('SonarUser')
+        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-creds')
+        DOCKER_IMAGE = 'kattabhanuanusha/calculatorjavacode'
         DOCKER_TAG = 'latest'
     }
 
@@ -14,7 +14,7 @@ pipeline {
             agent any
             steps {
                 cleanWs()
-                echo "Workspace cleaned"
+                git branch: 'main', url: 'https://github.com/BhanuAnusha/CalculatorApp.git'
             }
         }
 
@@ -27,10 +27,14 @@ pipeline {
                 }
             }
             steps {
-                sh '''
-                    mvn --% clean package -Dmaven.compiler.source=11 -Dmaven.compiler.target=11
-                '''
-                stash includes: 'target/**', name: 'compiled-artifacts'
+                dir('calculator-app') {
+                    sh '''
+                        mvn clean package \
+                            -Dmaven.compiler.source=11 \
+                            -Dmaven.compiler.target=11
+                    '''
+                }
+                stash includes: 'calculator-app/target/**', name: 'compiled-artifacts'
             }
         }
 
@@ -44,11 +48,13 @@ pipeline {
             }
             steps {
                 unstash 'compiled-artifacts'
-                sh 'mvn test'
+                dir('calculator-app') {
+                    sh 'mvn test -Dtest="com.example.calculator.CalculatorTest"'
+                }
             }
             post {
                 always {
-                    junit 'target/surefire-reports/*.xml'
+                    junit 'calculator-app/target/surefire-reports/*.xml'
                 }
             }
         }
@@ -62,13 +68,15 @@ pipeline {
                 }
             }
             steps {
-                withSonarQubeEnv('My SonarQube Server') {
-                    sh '''
-                        mvn sonar:sonar \
-                        -Dsonar.projectKey=math-utils \
-                        -Dsonar.host.url=$SONARQUBE_URL \
-                        -Dsonar.login=$SONARQUBE_TOKEN
-                    '''
+                dir('calculator-app') {
+                    withSonarQubeEnv('SONARQUBE') {
+                        sh '''
+                            mvn sonar:sonar \
+                                -Dsonar.projectKey=MyProject \
+                                -Dsonar.host.url=$SONARQUBE_URL \
+                                -Dsonar.login=$SONARQUBE_TOKEN
+                        '''
+                    }
                 }
             }
         }
@@ -77,8 +85,9 @@ pipeline {
             agent any
             steps {
                 script {
-                    sh 'ls -la target/'
-                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", '.')
+                    sh 'ls -la calculator-app/target/' // verify JAR exists
+                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", 'calculator-app')
+                    echo "✅ Docker image built: ${DOCKER_IMAGE}:${DOCKER_TAG}"
                 }
             }
         }
@@ -87,9 +96,9 @@ pipeline {
             agent any
             steps {
                 script {
-                    docker.withRegistry('https://registry.hub.docker.com', DOCKER_HUB_CREDENTIALS) {
+                    docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-creds') {
                         docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
-                        echo "✅ Successfully pushed ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                        echo "🚀 Successfully pushed: ${DOCKER_IMAGE}:${DOCKER_TAG}"
                     }
                 }
             }
@@ -100,7 +109,8 @@ pipeline {
             steps {
                 script {
                     sh 'kubectl version --client'
-                    sh 'kubectl apply -f deployment.yaml'
+                    sh 'kubectl apply -f /var/jenkins_home/deploymentdh.yaml'
+                    echo "🚀 Deployed to Kubernetes"
                 }
             }
         }
