@@ -27,7 +27,7 @@ pipeline {
                 }
             }
             steps {
-                dir('calculator-app') {  // Ensure that the path is correct where the pom.xml exists
+                dir('/') {  // Update this to the correct path where pom.xml is located
                     sh '''
                         # Clean and build with Java 11
                         mvn clean package \
@@ -36,7 +36,7 @@ pipeline {
                         -Djava.version=11
                     '''
                 }
-                stash includes: 'calculator-app/target/', name: 'compiled-artifacts'
+                stash includes: 'target/', name: 'compiled-artifacts'
             }
         }
 
@@ -50,13 +50,13 @@ pipeline {
             }
             steps {
                 unstash 'compiled-artifacts'
-                dir('calculator-app') {
+                dir('/') {  // Update this to the correct path
                     sh 'mvn test -Dtest="com.example.calculator.CalculatorTest"'
                 }
             }
             post {
                 always {
-                    junit 'calculator-app//target/surefire-reports/*.xml'
+                    junit 'target/surefire-reports/*.xml'
                 }
             }
         }
@@ -70,7 +70,7 @@ pipeline {
                 }
             }
             steps {
-                dir('calculator-app') {
+                dir('/') {  // Update this to the correct path
                     withSonarQubeEnv('SONARQUBE') {
                         sh """
                             mvn sonar:sonar \
@@ -88,8 +88,8 @@ pipeline {
             steps {
                 script {
                     // Verify files before build
-                    sh 'ls -la calculator-app/target/'
-                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", 'calculator-app')
+                    sh 'ls -la target/'
+                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", '.')
                     echo "Build docker image done"
                 }
             }
