@@ -4,8 +4,8 @@ pipeline {
     environment {
         SONARQUBE_URL = 'http://host.docker.internal:9000'
         SONARQUBE_TOKEN = credentials('SonarUser')
-        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-creds')  // Credentials referenced here
-        DOCKER_IMAGE = 'vinay8498/math-utils'
+        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-creds')
+        DOCKER_IMAGE = 'kattabhanuanusha/calculatorjavacode'
         DOCKER_TAG = 'latest'
     }
 
@@ -14,7 +14,7 @@ pipeline {
             agent any
             steps {
                 cleanWs()
-                git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline'
+                git branch: 'main', url: 'https://github.com/BhanuAnusha/CalculatorApp.git'
             }
         }
 
@@ -36,7 +36,7 @@ pipeline {
                         -Djava.version=11
                     '''
                 }
-                stash includes: 'calculator-app/target/', name: 'compiled-artifacts'
+                stash includes: 'calculator-app/target/**', name: 'compiled-artifacts'
             }
         }
 
@@ -52,11 +52,12 @@ pipeline {
                 unstash 'compiled-artifacts'
                 dir('calculator-app') {
                     sh 'mvn test -Dtest="com.example.calculator.CalculatorTest"'
+                    
                 }
             }
             post {
                 always {
-                    junit 'calculator-app//target/surefire-reports/*.xml'
+                    junit 'calculator-app/**/target/surefire-reports/*.xml'
                 }
             }
         }
@@ -89,9 +90,8 @@ pipeline {
                 script {
                     // Verify files before build
                     sh 'ls -la calculator-app/target/'
-                    // Build Docker image
                     docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", 'calculator-app')
-                    echo "Build docker image done"
+                    echo "build docker image done"
                 }
             }
         }
@@ -100,7 +100,6 @@ pipeline {
             agent any
             steps {
                 script {
-                    // Use the Docker credentials for pushing the image
                     docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-creds') {
                         docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
                         echo "Successfully pushed ${DOCKER_IMAGE}:${DOCKER_TAG}"
@@ -108,13 +107,15 @@ pipeline {
                 }
             }
         }
-
         stage('Deploy to Kubernetes') {
             agent any
             steps {
                 script {
-                    // Apply the Kubernetes deployment manifest
-                    sh 'kubectl apply -f deployment.yaml'
+                    // Verify kubectl is available
+                    sh 'kubectl version --client'
+                    
+                    // Apply the deployment manifest
+                    sh 'kubectl apply -f /var/jenkins_home/deploymentdh.yaml'
                 }
             }
         }
