@@ -48,7 +48,7 @@ pipeline {
             }
             steps {
                 unstash 'compiled-artifacts'
-                sh 'mvn test -Dtest="com.example.calculator.CalculatorTest"'
+                sh 'mvn test -Dtest="com.mathutils.MathUtilsTest"'
             }
             post {
                 always {
