@@ -1,37 +1,15 @@
-pipeline {
+	pipeline {
     agent none
 
     environment {
         SONARQUBE_URL = 'http://host.docker.internal:9001'
         SONARQUBE_TOKEN = credentials('SonarUser')
-        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-creds')
-        DOCKER_IMAGE = 'vinayvinnu8498/math-utils'
+        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-creds')  // Credentials referenced here
+        DOCKER_IMAGE = 'vinay8498/math-utils'
         DOCKER_TAG = 'latest'
     }
 
     stages {
-        stage('Check kubectl') {
-            steps {
-                script {
-                    // Check if kubectl is installed
-                    sh 'which kubectl || (echo "kubectl not found" && exit 1)'
-                }
-            }
-        }
-
-        stage('Install kubectl') {
-            steps {
-                script {
-                    // Install kubectl if not found
-                    sh '''
-                        curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl
-                        chmod +x ./kubectl
-                        mv ./kubectl /usr/local/bin/kubectl
-                    '''
-                }
-            }
-        }
-
         stage('Clean Workspace') {
             agent any
             steps {
@@ -103,6 +81,7 @@ pipeline {
             agent any
             steps {
                 script {
+                    // Verify files before build
                     sh 'ls -la target/'
                     docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", '.')
                     echo "Build docker image done"
@@ -126,6 +105,7 @@ pipeline {
             agent any
             steps {
                 script {
+                    // Apply the Kubernetes deployment manifest
                     sh 'kubectl apply -f deployment.yaml'
                 }
             }
