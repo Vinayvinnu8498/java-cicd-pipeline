@@ -1,68 +1,119 @@
 pipeline {
-    agent any
+    agent none
 
     environment {
-        SONARQUBE_SERVER = 'http://sonar:9000'
-        DOCKER_IMAGE = 'vinay8498/my-java-app:latest'
+        SONARQUBE_URL = 'http://host.docker.internal:9000'
+        SONARQUBE_TOKEN = credentials('SonarUser')
+        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-creds')  // Credentials referenced here
+        DOCKER_IMAGE = 'vinay8498/math-utils'
+        DOCKER_TAG = 'latest'
     }
 
     stages {
-        stage('Checkout') {
+        stage('Clean Workspace') {
+            agent any
             steps {
-                git 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
+                cleanWs()
+                git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline'
             }
         }
 
-        stage('Build') {
+        stage('Build (Java 11)') {
+            agent {
+                docker {
+                    image 'maven:3.8.6-eclipse-temurin-11'
+                    args '-v $HOME/.m2:/root/.m2'
+                    reuseNode true
+                }
+            }
             steps {
-                script {
-                    docker.image('maven:3.8.1-openjdk-17').inside {
-                        sh 'mvn clean package'
-                    }
+                dir('calculator-app') {
+                    sh '''
+                        # Clean and build with Java 11
+                        mvn clean package \
+                        -Dmaven.compiler.source=11 \
+                        -Dmaven.compiler.target=11 \
+                        -Djava.version=11
+                    '''
+                }
+                stash includes: 'calculator-app/target/', name: 'compiled-artifacts'
+            }
+        }
+
+        stage('Unit Test (Java 21)') {
+            agent {
+                docker {
+                    image 'maven:3.9.9-eclipse-temurin-21'
+                    args '-v $HOME/.m2:/root/.m2'
+                    reuseNode true
+                }
+            }
+            steps {
+                unstash 'compiled-artifacts'
+                dir('calculator-app') {
+                    sh 'mvn test -Dtest="com.example.calculator.CalculatorTest"'
+                }
+            }
+            post {
+                always {
+                    junit 'calculator-app//target/surefire-reports/*.xml'
                 }
             }
         }
 
-        stage('Test') {
-            steps {
-                script {
-                    docker.image('openjdk:11-jdk').inside {
-                        sh 'mvn test'
-                    }
+        stage('SonarQube Analysis') {
+            agent {
+                docker {
+                    image 'maven:3.8.6-eclipse-temurin-17'
+                    args '-v $HOME/.m2:/root/.m2'
+                    reuseNode true
                 }
             }
-        }
-
-        stage('Static Code Analysis') {
             steps {
-                script {
-                    docker.image('openjdk:8-jdk').inside {
-                        sh 'mvn sonar:sonar -Dsonar.host.url=${SONARQUBE_SERVER}'
+                dir('calculator-app') {
+                    withSonarQubeEnv('SONARQUBE') {
+                        sh """
+                            mvn sonar:sonar \
+                            -Dsonar.projectKey=MyProject \
+                            -Dsonar.host.url=${SONARQUBE_URL} \
+                            -Dsonar.login=${SONARQUBE_TOKEN}
+                        """
                     }
                 }
             }
         }
 
         stage('Build Docker Image') {
+            agent any
             steps {
                 script {
-                    sh 'docker build -t ${DOCKER_IMAGE} .'
+                    // Verify files before build
+                    sh 'ls -la calculator-app/target/'
+                    // Build Docker image
+                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", 'calculator-app')
+                    echo "Build docker image done"
                 }
             }
         }
 
         stage('Push to Docker Hub') {
+            agent any
             steps {
                 script {
-                    sh 'docker login -u vinay8498 -p YOUR_PASSWORD'
-                    sh 'docker push ${DOCKER_IMAGE}'
+                    // Use the Docker credentials for pushing the image
+                    docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-creds') {
+                        docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
+                        echo "Successfully pushed ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                    }
                 }
             }
         }
 
         stage('Deploy to Kubernetes') {
+            agent any
             steps {
                 script {
+                    // Apply the Kubernetes deployment manifest
                     sh 'kubectl apply -f deployment.yaml'
                 }
             }
