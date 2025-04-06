@@ -18,7 +18,8 @@ pipeline {
         stage('Build') {
             steps {
                 script {
-                    docker.image('openjdk:17-jdk').inside {
+                    // Use maven image which has Java 17 and Maven installed
+                    docker.image('maven:3.8.6-openjdk-17').inside {
                         sh 'mvn clean package'
                     }
                 }
@@ -28,7 +29,7 @@ pipeline {
         stage('Test') {
             steps {
                 script {
-                    docker.image('openjdk:11-jdk').inside {
+                    docker.image('maven:3.8.6-openjdk-17').inside {
                         sh 'mvn test'
                     }
                 }
@@ -38,7 +39,7 @@ pipeline {
         stage('Static Code Analysis') {
             steps {
                 script {
-                    docker.image('openjdk:8-jdk').inside {
+                    docker.image('maven:3.8.6-openjdk-17').inside {
                         sh 'mvn sonar:sonar -Dsonar.host.url=${SONARQUBE_SERVER} -Dsonar.login=${SONARQUBE_TOKEN}'
                     }
                 }
