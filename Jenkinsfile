@@ -27,15 +27,13 @@ pipeline {
                 }
             }
             steps {
-                dir('/') {  // Update this to the correct path where pom.xml is located
-                    sh '''
-                        # Clean and build with Java 11
-                        mvn clean package \
-                        -Dmaven.compiler.source=11 \
-                        -Dmaven.compiler.target=11 \
-                        -Djava.version=11
-                    '''
-                }
+                sh '''
+                    # Clean and build with Java 11
+                    mvn clean package \
+                    -Dmaven.compiler.source=11 \
+                    -Dmaven.compiler.target=11 \
+                    -Djava.version=11
+                '''
                 stash includes: 'target/', name: 'compiled-artifacts'
             }
         }
@@ -50,9 +48,7 @@ pipeline {
             }
             steps {
                 unstash 'compiled-artifacts'
-                dir('/') {  // Update this to the correct path
-                    sh 'mvn test -Dtest="com.example.calculator.CalculatorTest"'
-                }
+                sh 'mvn test -Dtest="com.example.calculator.CalculatorTest"'
             }
             post {
                 always {
@@ -70,15 +66,13 @@ pipeline {
                 }
             }
             steps {
-                dir('/') {  // Update this to the correct path
-                    withSonarQubeEnv('SONARQUBE') {
-                        sh """
-                            mvn sonar:sonar \
-                            -Dsonar.projectKey=MyProject \
-                            -Dsonar.host.url=${SONARQUBE_URL} \
-                            -Dsonar.login=${SONARQUBE_TOKEN}
-                        """
-                    }
+                withSonarQubeEnv('SONARQUBE') {
+                    sh """
+                        mvn sonar:sonar \
+                        -Dsonar.projectKey=MyProject \
+                        -Dsonar.host.url=${SONARQUBE_URL} \
+                        -Dsonar.login=${SONARQUBE_TOKEN}
+                    """
                 }
             }
         }
