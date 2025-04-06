@@ -4,8 +4,8 @@ pipeline {
     environment {
         SONARQUBE_URL = 'http://host.docker.internal:9000'
         SONARQUBE_TOKEN = credentials('SonarUser')
-        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-creds')
-        DOCKER_IMAGE = 'kattabhanuanusha/calculatorjavacode'
+        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-creds')  // Credentials referenced here
+        DOCKER_IMAGE = 'vinay8498/math-utils'
         DOCKER_TAG = 'latest'
     }
 
@@ -14,7 +14,7 @@ pipeline {
             agent any
             steps {
                 cleanWs()
-                git branch: 'main', url: 'https://github.com/BhanuAnusha/CalculatorApp.git'
+                git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline'
             }
         }
 
@@ -27,7 +27,7 @@ pipeline {
                 }
             }
             steps {
-                dir('calculator-app') {
+                dir('calculator-app') {  // Ensure that the path is correct where the pom.xml exists
                     sh '''
                         # Clean and build with Java 11
                         mvn clean package \
@@ -36,7 +36,7 @@ pipeline {
                         -Djava.version=11
                     '''
                 }
-                stash includes: 'calculator-app/target/**', name: 'compiled-artifacts'
+                stash includes: 'calculator-app/target/', name: 'compiled-artifacts'
             }
         }
 
@@ -52,12 +52,11 @@ pipeline {
                 unstash 'compiled-artifacts'
                 dir('calculator-app') {
                     sh 'mvn test -Dtest="com.example.calculator.CalculatorTest"'
-                    
                 }
             }
             post {
                 always {
-                    junit 'calculator-app/**/target/surefire-reports/*.xml'
+                    junit 'calculator-app//target/surefire-reports/*.xml'
                 }
             }
         }
@@ -91,7 +90,7 @@ pipeline {
                     // Verify files before build
                     sh 'ls -la calculator-app/target/'
                     docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", 'calculator-app')
-                    echo "build docker image done"
+                    echo "Build docker image done"
                 }
             }
         }
@@ -107,15 +106,13 @@ pipeline {
                 }
             }
         }
+
         stage('Deploy to Kubernetes') {
             agent any
             steps {
                 script {
-                    // Verify kubectl is available
-                    sh 'kubectl version --client'
-                    
-                    // Apply the deployment manifest
-                    sh 'kubectl apply -f /var/jenkins_home/deploymentdh.yaml'
+                    // Apply the Kubernetes deployment manifest
+                    sh 'kubectl apply -f deployment.yaml'
                 }
             }
         }
