@@ -2,99 +2,72 @@ pipeline {
     agent any
 
     environment {
-        SONARQUBE_URL = 'http://host.docker.internal:9000'
-        SONARQUBE_TOKEN = credentials('SonarUser')
-        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-creds')
-        DOCKER_IMAGE = 'vinay8498/my-java-app'
-        DOCKER_TAG = 'latest'
+        SONARQUBE_SERVER = 'http://sonar:9000'
+        DOCKER_IMAGE = 'vinay8498/java-app:latest'  // Replace with your Docker Hub username
+        SONARQUBE_TOKEN = credentials('SonarUser') // Your SonarQube token
+        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-creds') // Your Docker Hub credentials ID
     }
 
     stages {
-        stage('Clean Workspace') {
+        stage('Checkout') {
             steps {
-                cleanWs()
-                checkout scm  // This ensures the Git repository is correctly fetched
+                git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
             }
         }
 
-        stage('Build (Java 11)') {
-            agent {
-                docker {
-                    image 'maven:3.8.6-eclipse-temurin-11'
-                    args '-v $HOME/.m2:/root/.m2'
-                    reuseNode true
-                }
-            }
+        stage('Build') {
             steps {
-                sh '''
-                    mvn clean package -Dmaven.compiler.source=11 -Dmaven.compiler.target=11 -Djava.version=11
-                '''
-                stash includes: 'target/', name: 'compiled-artifacts'
-            }
-        }
-
-        stage('Unit Test (Java 21)') {
-            agent {
-                docker {
-                    image 'maven:3.9.9-eclipse-temurin-21'
-                    args '-v $HOME/.m2:/root/.m2'
-                    reuseNode true
-                }
-            }
-            steps {
-                unstash 'compiled-artifacts'
-                sh 'mvn test -Dtest="com.example.calculator.CalculatorTest"'
-            }
-            post {
-                always {
-                    junit '**/target/surefire-reports/*.xml'
+                script {
+                    docker.image('openjdk:17-jdk').inside {
+                        sh 'mvn clean package'
+                    }
                 }
             }
         }
 
-        stage('SonarQube Analysis') {
-            agent {
-                docker {
-                    image 'maven:3.8.6-eclipse-temurin-17'
-                    args '-v $HOME/.m2:/root/.m2'
-                    reuseNode true
+        stage('Test') {
+            steps {
+                script {
+                    docker.image('openjdk:11-jdk').inside {
+                        sh 'mvn test'
+                    }
                 }
             }
+        }
+
+        stage('Static Code Analysis') {
             steps {
-                withSonarQubeEnv('SONARQUBE') {
-                    sh """
-                        mvn sonar:sonar -Dsonar.projectKey=MyProject -Dsonar.host.url=${SONARQUBE_URL} -Dsonar.login=${SONARQUBE_TOKEN}
-                    """
+                script {
+                    docker.image('openjdk:8-jdk').inside {
+                        sh 'mvn sonar:sonar -Dsonar.host.url=${SONARQUBE_SERVER} -Dsonar.login=${SONARQUBE_TOKEN}'
+                    }
                 }
             }
         }
 
         stage('Build Docker Image') {
-            agent any
             steps {
                 script {
-                    docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}", '.')
+                    sh 'docker build -t ${DOCKER_IMAGE} .'
                 }
             }
         }
 
         stage('Push to Docker Hub') {
-            agent any
             steps {
                 script {
                     docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-creds') {
-                        docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}").push()
+                        docker.image("${DOCKER_IMAGE}:latest").push()
+                        echo "Successfully pushed ${DOCKER_IMAGE}:${DOCKER_TAG}"
                     }
                 }
             }
         }
 
         stage('Deploy to Kubernetes') {
-            agent any
             steps {
                 script {
-                    sh 'kubectl version --client'
-                    sh 'kubectl apply -f /var/jenkins_home/deploymentdh.yaml'
+                    sh 'kubectl apply -f deployment.yaml'
                 }
             }
         }
