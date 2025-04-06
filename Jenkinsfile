@@ -3,22 +3,19 @@ pipeline {
 
     environment {
         SONARQUBE_SERVER = 'http://sonar:9000'
-        DOCKER_IMAGE = 'vinay8498/java-app:latest'  // Replace with your Docker Hub username
-        SONARQUBE_TOKEN = credentials('SonarUser') // Your SonarQube token
-        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-creds') // Your Docker Hub credentials ID
+        DOCKER_IMAGE = 'vinay8498/my-java-app:latest'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
+                git 'https://github.com/Vinayvinnu8498/java-cicd-pipeline.git'
             }
         }
 
         stage('Build') {
             steps {
                 script {
-                    // Use maven image which has Java 17 and Maven installed
                     docker.image('maven:3.8.1-openjdk-17').inside {
                         sh 'mvn clean package'
                     }
@@ -29,7 +26,7 @@ pipeline {
         stage('Test') {
             steps {
                 script {
-                    docker.image('maven:3.8.1-openjdk-17').inside {
+                    docker.image('openjdk:11-jdk').inside {
                         sh 'mvn test'
                     }
                 }
@@ -39,8 +36,8 @@ pipeline {
         stage('Static Code Analysis') {
             steps {
                 script {
-                    docker.image('maven:3.8.1-openjdk-17').inside {
-                        sh 'mvn sonar:sonar -Dsonar.host.url=${SONARQUBE_SERVER} -Dsonar.login=${SONARQUBE_TOKEN}'
+                    docker.image('openjdk:8-jdk').inside {
+                        sh 'mvn sonar:sonar -Dsonar.host.url=${SONARQUBE_SERVER}'
                     }
                 }
             }
@@ -57,10 +54,8 @@ pipeline {
         stage('Push to Docker Hub') {
             steps {
                 script {
-                    docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-creds') {
-                        docker.image("${DOCKER_IMAGE}:latest").push()
-                        echo "Successfully pushed ${DOCKER_IMAGE}:${DOCKER_TAG}"
-                    }
+                    sh 'docker login -u vinay8498 -p YOUR_PASSWORD'
+                    sh 'docker push ${DOCKER_IMAGE}'
                 }
             }
         }
