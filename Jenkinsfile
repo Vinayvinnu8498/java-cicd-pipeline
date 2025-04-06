@@ -1,11 +1,11 @@
-	pipeline {
+pipeline {
     agent none
 
     environment {
         SONARQUBE_URL = 'http://host.docker.internal:9001'
         SONARQUBE_TOKEN = credentials('SonarUser')
         DOCKER_HUB_CREDENTIALS = credentials('docker-hub-creds')  // Credentials referenced here
-        DOCKER_IMAGE = 'vinay8498/math-utils'
+        DOCKER_IMAGE = 'vinayvinnu8498/math-utils'
         DOCKER_TAG = 'latest'
     }
 
@@ -105,6 +105,12 @@
             agent any
             steps {
                 script {
+                    // Install kubectl if it's not available
+                    sh '''
+                    curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.21.0/bin/linux/amd64/kubectl
+                    chmod +x ./kubectl
+                    mv ./kubectl /usr/local/bin/kubectl
+                    '''
                     // Apply the Kubernetes deployment manifest
                     sh 'kubectl apply -f deployment.yaml'
                 }
