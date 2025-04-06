@@ -2,8 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: math-utils-deployment
-  labels:
-    app: math-utils
 spec:
   replicas: 1
   selector:
@@ -15,20 +13,9 @@ spec:
         app: math-utils
     spec:
       containers:
-        - name: math-utils
-          image: vinayvinnu8498/math-utils:latest
-          ports:
-            - containerPort: 8080
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: math-utils-service
-spec:
-  selector:
-    app: math-utils
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 8080
-  type: LoadBalancer
+      - name: math-utils
+        image: vinay8498/math-utils:latest
+        ports:
+        - containerPort: 8080
+      imagePullSecrets:
+      - name: regcred
